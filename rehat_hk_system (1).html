@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rehat HK System</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root {
+  --blue:#3D6FCB; --blue-dark:#2A4E9A; --blue-light:#EEF3FB; --blue-mid:#C5D6F2;
+  --dark:#1A2B4A; --gray-bg:#F5F7FA; --gray-100:#F0F4FA; --gray-200:#E4E8F0;
+  --gray-400:#9AA3B2; --gray-600:#5A6478; --white:#FFFFFF;
+  --green:#22C55E; --green-light:#DCFCE7; --green-dark:#15803D;
+  --yellow:#F59E0B; --yellow-light:#FEF9C3; --yellow-dark:#92400E;
+  --red:#EF4444; --red-light:#FEE2E2; --red-dark:#B91C1C;
+  --teal:#0E9F7E; --teal-light:#D1FAE5; --teal-dark:#065F46;
+  --purple:#7C3AED; --purple-light:#EDE9FE; --purple-dark:#4C1D95;
+  --orange:#F97316;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray-bg);color:var(--dark);min-height:100vh;}
+
+/* ─── UTILITIES ─────────────────────────────────────────── */
+.hidden{display:none!important;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-green{background:var(--green-light);color:var(--green-dark);}
+.badge-red{background:var(--red-light);color:var(--red-dark);}
+.badge-yellow{background:var(--yellow-light);color:var(--yellow-dark);}
+.badge-blue{background:var(--blue-light);color:var(--blue-dark);}
+.badge-purple{background:var(--purple-light);color:var(--purple-dark);}
+.badge-gray{background:var(--gray-200);color:var(--gray-600);}
+.badge-teal{background:var(--teal-light);color:var(--teal-dark);}
+.badge-orange{background:#FFEDD5;color:#C2410C;}
+.badge-amber{background:#FEF3C7;color:#B45309;}
+
+/* ─── LOST & FOUND ──────────────────────────────────────── */
+.lf-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;margin-bottom:12px;display:flex;gap:14px;align-items:flex-start;}
+.lf-icon-box{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.lf-body{flex:1;}
+.lf-title{font-size:14px;font-weight:700;margin-bottom:3px;}
+.lf-meta{font-size:12px;color:var(--gray-400);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.lf-status-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.lf-claimed-box{padding:8px 12px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;font-size:12px;color:var(--green-dark);margin-top:8px;}
+.lf-timeline{margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-200);}
+.lf-tl-item{display:flex;gap:8px;font-size:11px;color:var(--gray-600);margin-bottom:4px;}
+.lf-tl-dot{width:6px;height:6px;border-radius:50%;background:var(--gray-400);margin-top:4px;flex-shrink:0;}
+
+/* ─── AUTH SCREEN ───────────────────────────────────────── */
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--dark) 0%,#2A3F6A 60%,#1a4a5c 100%);}
+.auth-box{background:white;border-radius:20px;width:420px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.35);}
+.auth-header{background:linear-gradient(135deg,var(--blue),var(--blue-dark));padding:32px;text-align:center;}
+.auth-logo{width:52px;height:52px;background:rgba(255,255,255,.15);border-radius:14px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:white;letter-spacing:-1px;}
+.auth-header h1{color:white;font-size:22px;font-weight:800;margin-bottom:4px;}
+.auth-header p{color:rgba(255,255,255,.65);font-size:13px;}
+.auth-body{padding:28px;}
+.auth-tabs{display:flex;background:var(--gray-100);border-radius:10px;padding:3px;margin-bottom:22px;}
+.auth-tab{flex:1;padding:8px;border-radius:8px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray-400);transition:.15s;font-family:inherit;}
+.auth-tab.active{background:white;color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.form-group{margin-bottom:16px;}
+.form-group label{font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;}
+.form-group input,.form-group select{width:100%;padding:10px 13px;border-radius:9px;border:1.5px solid var(--gray-200);font-size:13px;font-family:inherit;color:var(--dark);background:var(--gray-bg);transition:.12s;}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue);background:white;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn-full{width:100%;padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+.btn-blue{background:var(--blue);color:white;}
+.btn-blue:hover{background:var(--blue-dark);}
+.auth-msg{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:600;text-align:center;}
+.auth-msg.err{background:var(--red-light);color:var(--red-dark);}
+.auth-msg.ok{background:var(--green-light);color:var(--green-dark);}
+
+/* ─── APP SHELL ─────────────────────────────────────────── */
+#app-screen{display:none;min-height:100vh;flex-direction:column;}
+#app-screen.visible{display:flex;}
+.topbar{background:var(--dark);color:white;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--blue);flex-shrink:0;}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.topbar-logo{width:34px;height:34px;background:var(--blue);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:white;}
+.topbar-title{font-weight:700;font-size:15px;}
+.topbar-sub{font-size:11px;color:var(--gray-400);font-family:'IBM Plex Mono',monospace;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.user-chip{display:flex;align-items:center;gap:8px;padding:5px 12px;background:rgba(255,255,255,.08);border-radius:20px;}
+.user-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;}
+.user-name{font-size:12px;font-weight:600;}
+.user-level{font-size:10px;color:var(--gray-400);}
+.btn-logout{padding:5px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.6);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s;}
+.btn-logout:hover{background:rgba(255,255,255,.08);color:white;}
+
+/* ─── MAIN LAYOUT ───────────────────────────────────────── */
+.app-layout{display:flex;flex:1;min-height:0;}
+.sidebar{width:230px;min-width:230px;background:white;border-right:1px solid var(--gray-200);padding:18px 0;overflow-y:auto;}
+.sidebar-section{padding:0 14px;margin-bottom:20px;}
+.sidebar-label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gray-400);text-transform:uppercase;margin-bottom:7px;}
+.nav-btn{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--gray-600);transition:.12s;width:100%;text-align:left;font-family:inherit;}
+.nav-btn:hover{background:var(--blue-light);color:var(--blue);}
+.nav-btn.active{background:var(--blue);color:white;font-weight:700;}
+.nav-icon{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+.nav-count{margin-left:auto;background:rgba(0,0,0,.08);padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+.nav-btn.active .nav-count{background:rgba(255,255,255,.2);}
+
+/* ─── MAIN CONTENT ──────────────────────────────────────── */
+.main-content{flex:1;padding:24px;overflow-y:auto;}
+.page{display:none;}
+.page.active{display:block;}
+.page-header{margin-bottom:22px;display:flex;align-items:flex-start;justify-content:space-between;}
+.page-title{font-size:20px;font-weight:800;}
+.page-sub{font-size:13px;color:var(--gray-400);margin-top:3px;}
+
+/* ─── CARDS ─────────────────────────────────────────────── */
+.card{background:white;border-radius:14px;border:1px solid var(--gray-200);overflow:hidden;margin-bottom:18px;}
+.card-header{padding:15px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;}
+.card-header h3{font-size:14px;font-weight:700;}
+.card-body{padding:20px;}
+
+/* ─── STAT CARDS ────────────────────────────────────────── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:20px;}
+.stat-card{background:white;border-radius:12px;border:1px solid var(--gray-200);padding:16px 18px;}
+.stat-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px;}
+.stat-val{font-size:24px;font-weight:800;font-family:'IBM Plex Mono',monospace;line-height:1;}
+.stat-lbl{font-size:11px;color:var(--gray-400);margin-top:4px;}
+
+/* ─── TABLE ─────────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:9px 14px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--gray-400);background:var(--gray-bg);border-bottom:1px solid var(--gray-200);text-align:left;white-space:nowrap;}
+.tbl td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--gray-200);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--blue-light);}
+.tbl-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ─── BUTTONS ───────────────────────────────────────────── */
+.btn{padding:8px 16px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--blue);color:white;}
+.btn-primary:hover{background:var(--blue-dark);}
+.btn-green{background:var(--green);color:white;}
+.btn-green:hover{background:#16A34A;}
+.btn-red{background:var(--red);color:white;}
+.btn-red:hover{background:#DC2626;}
+.btn-ghost{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-200);}
+.btn-ghost:hover{background:var(--gray-200);}
+.btn-sm{padding:5px 12px;font-size:11px;}
+.btn-teal{background:var(--teal);color:white;}
+.btn-teal:hover{background:var(--teal-dark);}
+.btn-purple{background:var(--purple);color:white;}
+.btn-purple:hover{background:#6D28D9;}
+.btn-yellow{background:var(--yellow);color:white;}
+.btn-yellow:hover{background:#D97706;}
+
+/* ─── FORM ──────────────────────────────────────────────── */
+.form-grid{display:grid;gap:14px;}
+.form-2{grid-template-columns:1fr 1fr;}
+.form-3{grid-template-columns:1fr 1fr 1fr;}
+.form-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.field label{font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--gray-200);font-size:13px;font-family:inherit;color:var(--dark);background:var(--gray-bg);transition:.12s;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--blue);background:white;}
+.field textarea{resize:vertical;min-height:70px;}
+
+/* ─── MODAL ─────────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:white;border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.25);}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:white;z-index:1;}
+.modal-header h3{font-size:16px;font-weight:700;}
+.modal-close{width:32px;height:32px;border-radius:8px;border:none;background:var(--gray-100);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+.modal-close:hover{background:var(--gray-200);}
+.modal-body{padding:24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--gray-200);display:flex;gap:10px;justify-content:flex-end;}
+
+/* ─── PROGRESS BAR ──────────────────────────────────────── */
+.progress-bar{height:6px;border-radius:3px;background:var(--gray-200);overflow:hidden;}
+.progress-fill{height:100%;border-radius:3px;transition:width .4s;}
+
+/* ─── TIMELINE ──────────────────────────────────────────── */
+.timeline{padding-left:18px;border-left:2px solid var(--gray-200);}
+.tl-item{position:relative;padding:0 0 18px 20px;}
+.tl-dot{position:absolute;left:-9px;top:4px;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 2px var(--gray-200);}
+.tl-time{font-size:11px;color:var(--gray-400);font-family:'IBM Plex Mono',monospace;margin-bottom:2px;}
+.tl-text{font-size:13px;font-weight:500;}
+
+/* ─── EMPTY STATE ───────────────────────────────────────── */
+.empty-state{text-align:center;padding:48px 24px;color:var(--gray-400);}
+.empty-state .es-icon{font-size:40px;margin-bottom:12px;}
+.empty-state h4{font-size:15px;font-weight:700;color:var(--gray-600);margin-bottom:6px;}
+.empty-state p{font-size:13px;}
+
+/* ─── ROOM CARD (staff) ─────────────────────────────────── */
+.room-entry-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;margin-bottom:12px;display:flex;gap:16px;align-items:flex-start;}
+.rec-number{width:52px;height:52px;border-radius:10px;background:var(--blue-light);color:var(--blue);font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono',monospace;}
+.rec-body{flex:1;}
+.rec-title{font-size:14px;font-weight:700;margin-bottom:4px;}
+.rec-meta{font-size:12px;color:var(--gray-400);display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+.rec-defect{font-size:12px;color:var(--red-dark);background:var(--red-light);padding:4px 10px;border-radius:6px;margin-top:6px;}
+
+/* ─── PROJECT CARD ──────────────────────────────────────── */
+.project-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:18px;margin-bottom:12px;}
+.pc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.pc-title{font-size:14px;font-weight:700;}
+.pc-area{font-size:12px;color:var(--gray-400);margin-top:2px;}
+.pc-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.pc-progress{margin-top:10px;}
+.pc-progress-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-400);margin-bottom:4px;}
+
+/* ─── FILTER BAR ────────────────────────────────────────── */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center;}
+.filter-select{padding:7px 12px;border-radius:8px;border:1.5px solid var(--gray-200);font-size:12px;font-family:inherit;background:white;color:var(--dark);cursor:pointer;}
+.filter-select:focus{outline:none;border-color:var(--blue);}
+.search-box{padding:7px 12px;border-radius:8px;border:1.5px solid var(--gray-200);font-size:12px;font-family:inherit;background:white;flex:1;max-width:220px;}
+.search-box:focus{outline:none;border-color:var(--blue);}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-header">
+      <div class="auth-logo">RH</div>
+      <h1>Rehat HK System</h1>
+      <p>Housekeeping Management · PT. Putra Pasundan</p>
+    </div>
+    <div class="auth-body">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="showTab('login')">Masuk</button>
+        <button class="auth-tab" onclick="showTab('signup')">Daftar</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="tab-login">
+        <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="nama@rehat.co.id"/></div>
+        <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••"/></div>
+        <button class="btn-full btn-blue" onclick="doLogin()">Masuk →</button>
+        <div id="login-msg" style="display:none;" class="auth-msg"></div>
+        <p style="margin-top:16px;text-align:center;font-size:12px;color:var(--gray-400);">Demo: lihat akun <strong>default</strong> di bawah</p>
+        <div style="margin-top:10px;background:var(--gray-bg);border-radius:10px;padding:12px;font-size:11px;color:var(--gray-600);font-family:'IBM Plex Mono',monospace;line-height:1.8;">
+          manager@rehat.co.id / rehat123 (Manager)<br>
+          leader@rehat.co.id / rehat123 (Leader)<br>
+          staff@rehat.co.id / rehat123 (Staff)
+        </div>
+      </div>
+
+      <!-- SIGNUP -->
+      <div id="tab-signup" style="display:none;">
+        <div class="form-group"><label>Nama Lengkap</label><input type="text" id="su-name" placeholder="Nama karyawan..."/></div>
+        <div class="form-group"><label>Email</label><input type="email" id="su-email" placeholder="email@rehat.co.id"/></div>
+        <div class="form-group"><label>Password</label><input type="password" id="su-pass" placeholder="Min. 6 karakter"/></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Departemen</label>
+            <select id="su-dept">
+              <option>Housekeeping</option><option>Front Office</option><option>Food & Beverage</option>
+              <option>Engineering</option><option>Security</option><option>Administration</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Level Akses</label>
+            <select id="su-level">
+              <option value="Staff">Staff</option>
+              <option value="Leader">Leader</option>
+              <option value="Manager">Manager</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Unit Hotel</label>
+          <select id="su-hotel">
+            <option>Dago Sky</option><option>Patradisa Iskat</option><option>Paskal Pelangi</option>
+            <option>Graha Sartika</option><option>Hotel 10 Buah Batu</option><option>Abadi Tasikmalaya</option>
+            <option>Wahidin</option><option>Ottenville Boutique</option><option>Siliwangi GH</option>
+            <option>Kurnia</option><option>Sabang</option><option>Gania</option>
+          </select>
+        </div>
+        <button class="btn-full btn-blue" onclick="doSignup()">Buat Akun →</button>
+        <div id="signup-msg" style="display:none;" class="auth-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     APP SCREEN
+════════════════════════════════════════════════════════ -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">RH</div>
+      <div>
+        <div class="topbar-title">Rehat HK System</div>
+        <div class="topbar-sub" id="app-hotel-label">Housekeeping Management</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-avatar" id="app-avatar" style="background:var(--blue);">—</div>
+        <div>
+          <div class="user-name" id="app-username">—</div>
+          <div class="user-level" id="app-userlevel">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="app-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Menu</div>
+        <div id="sidebar-nav"></div>
+      </div>
+    </nav>
+
+    <!-- PAGES -->
+    <div class="main-content" id="main-content">
+
+      <!-- ── STAFF: Room Log ──────────────────────────── -->
+      <div class="page" id="page-roomlog">
+        <div class="page-header">
+          <div><div class="page-title">📋 Log Pekerjaan Kamar</div><div class="page-sub">Catat kamar yang telah dibersihkan</div></div>
+          <button class="btn btn-primary" onclick="openModal('modal-add-room')">+ Tambah Log</button>
+        </div>
+        <div class="stat-grid" id="staff-stats"></div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Log Hari Ini</h3>
+            <div class="filter-bar" style="margin:0;">
+              <select class="filter-select" onchange="filterRoomLog()" id="filter-rl-status">
+                <option value="">Semua Status</option>
+                <option>Make Up Room</option><option>General Cleaning</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="roomlog-list" style="padding:16px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STAFF: Lost & Found Input ──────────────── -->
+      <div class="page" id="page-lf-staff">
+        <div class="page-header">
+          <div><div class="page-title">🔍 Lost &amp; Found</div><div class="page-sub">Laporkan barang temuan saat pembersihan kamar</div></div>
+          <button class="btn btn-primary" onclick="openModal('modal-add-lf')">+ Lapor Barang</button>
+        </div>
+        <div class="stat-grid" id="lf-staff-stats"></div>
+        <div class="card">
+          <div class="card-header"><h3>Laporan Saya</h3>
+            <select class="filter-select" onchange="renderLFStaff()" id="filter-lf-staff-status" style="margin:0;">
+              <option value="">Semua Status</option>
+              <option>Disimpan</option><option>Diklaim</option><option>Diserahkan ke FO</option>
+            </select>
+          </div>
+          <div style="padding:16px;" id="lf-staff-list"></div>
+        </div>
+      </div>
+
+      <!-- ── LEADER: Validasi ────────────────────────── -->
+      <div class="page" id="page-validate">
+        <div class="page-header">
+          <div><div class="page-title">✅ Validasi Pekerjaan</div><div class="page-sub">Verifikasi hasil kerja staff housekeeping</div></div>
+        </div>
+        <div class="stat-grid" id="leader-stats"></div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Menunggu Verifikasi</h3>
+            <div class="filter-bar" style="margin:0;gap:8px;">
+              <input type="text" class="search-box" placeholder="Cari kamar..." oninput="renderValidateList()" id="search-validate"/>
+              <select class="filter-select" onchange="renderValidateList()" id="filter-validate-hotel">
+                <option value="">Semua Unit</option>
+              </select>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="tbl" id="validate-tbl">
+              <thead><tr>
+                <th>Kamar</th><th>Staff</th><th>Unit Hotel</th><th>Tipe</th><th>Waktu</th><th>Durasi</th><th>Defect</th><th>Status</th><th>Aksi</th>
+              </tr></thead>
+              <tbody id="validate-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LEADER: Projects ────────────────────────── -->
+      <div class="page" id="page-projects">
+        <div class="page-header">
+          <div><div class="page-title">🔧 Project Maintenance</div><div class="page-sub">Kelola project perbaikan & maintenance hotel</div></div>
+          <button class="btn btn-teal" onclick="openModal('modal-add-project')">+ Project Baru</button>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" onchange="renderProjects()" id="filter-proj-status">
+            <option value="">Semua Status</option>
+            <option>Akan Dikerjakan</option><option>Sedang Berlangsung</option><option>Selesai</option>
+          </select>
+          <select class="filter-select" onchange="renderProjects()" id="filter-proj-hotel">
+            <option value="">Semua Unit</option>
+          </select>
+          <input type="text" class="search-box" placeholder="Cari project..." oninput="renderProjects()" id="search-proj"/>
+        </div>
+        <div id="projects-list"></div>
+      </div>
+
+      <!-- ── LEADER: Lost & Found Management ───────── -->
+      <div class="page" id="page-lf-leader">
+        <div class="page-header">
+          <div><div class="page-title">🔍 Kelola Lost &amp; Found</div><div class="page-sub">Verifikasi dan update status barang temuan</div></div>
+        </div>
+        <div class="stat-grid" id="lf-leader-stats"></div>
+        <div class="filter-bar">
+          <select class="filter-select" onchange="renderLFLeader()" id="filter-lfl-status">
+            <option value="">Semua Status</option>
+            <option>Disimpan</option><option>Diklaim</option><option>Diserahkan ke FO</option>
+          </select>
+          <select class="filter-select" onchange="renderLFLeader()" id="filter-lfl-cat">
+            <option value="">Semua Kategori</option>
+            <option>Elektronik</option><option>Dokumen / ID</option><option>Pakaian</option>
+            <option>Perhiasan / Aksesori</option><option>Uang / Dompet</option><option>Tas / Koper</option><option>Lainnya</option>
+          </select>
+          <input type="text" class="search-box" placeholder="Cari item / kamar..." oninput="renderLFLeader()" id="search-lfl"/>
+        </div>
+        <div id="lf-leader-list"></div>
+      </div>
+
+      <!-- ── MANAGER: Dashboard ──────────────────────── -->
+      <div class="page" id="page-manager-dash">
+        <div class="page-header">
+          <div><div class="page-title">📊 Manager Dashboard</div><div class="page-sub">Ringkasan operasional semua unit hotel</div></div>
+          <div style="display:flex;gap:8px;">
+            <select class="filter-select" onchange="renderManagerDash()" id="mgr-filter-hotel">
+              <option value="">Semua Unit Hotel</option>
+            </select>
+            <select class="filter-select" onchange="renderManagerDash()" id="mgr-filter-date">
+              <option value="today">Hari Ini</option>
+              <option value="week">7 Hari Terakhir</option>
+              <option value="month">30 Hari Terakhir</option>
+              <option value="all">Semua Data</option>
+            </select>
+          </div>
+        </div>
+        <div class="stat-grid" id="mgr-stats"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+          <div class="card" style="margin:0;">
+            <div class="card-header"><h3>📋 Log Kamar Terbaru</h3></div>
+            <div id="mgr-recent-rooms" style="padding:0 16px 12px;max-height:320px;overflow-y:auto;"></div>
+          </div>
+          <div class="card" style="margin:0;">
+            <div class="card-header"><h3>🔧 Project Aktif</h3></div>
+            <div id="mgr-active-projects" style="padding:0 16px 12px;max-height:320px;overflow-y:auto;"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>👥 Laporan per Karyawan</h3>
+            <select class="filter-select" onchange="renderStaffReport()" id="mgr-staff-hotel" style="margin:0;">
+              <option value="">Semua Unit</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr><th>Nama</th><th>Unit Hotel</th><th>Dept</th><th>Level</th><th>Total Log</th><th>Verified</th><th>Defect</th><th>Project</th></tr></thead>
+              <tbody id="staff-report-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MANAGER: Full Room Report ──────────────── -->
+      <div class="page" id="page-report-rooms">
+        <div class="page-header">
+          <div><div class="page-title">🛏️ Laporan Semua Log Kamar</div><div class="page-sub">Seluruh rekap pekerjaan housekeeping</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="exportReport()">⬇ Export CSV</button>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" onchange="renderFullRoomReport()" id="rr-hotel"><option value="">Semua Unit</option></select>
+          <select class="filter-select" onchange="renderFullRoomReport()" id="rr-status"><option value="">Semua Status</option><option>Make Up Room</option><option>General Cleaning</option></select>
+          <select class="filter-select" onchange="renderFullRoomReport()" id="rr-verified"><option value="">Semua Verifikasi</option><option value="Verified">Verified</option><option value="Not Verified">Not Verified</option><option value="Pending">Pending</option></select>
+          <input type="text" class="search-box" placeholder="Cari kamar/staff..." oninput="renderFullRoomReport()" id="rr-search"/>
+        </div>
+        <div class="card">
+          <div style="overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr><th>Tgl</th><th>Kamar</th><th>Tipe</th><th>Staff</th><th>Unit Hotel</th><th>Tipe Kerja</th><th>Mulai</th><th>Selesai</th><th>Durasi</th><th>Defect</th><th>Verified</th><th>Verifikator</th></tr></thead>
+              <tbody id="full-room-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MANAGER: Full Project Report ───────────── -->
+      <div class="page" id="page-report-projects">
+        <div class="page-header">
+          <div><div class="page-title">🔧 Laporan Semua Project</div><div class="page-sub">Seluruh project maintenance & perbaikan</div></div>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" onchange="renderFullProjectReport()" id="pr-hotel"><option value="">Semua Unit</option></select>
+          <select class="filter-select" onchange="renderFullProjectReport()" id="pr-status"><option value="">Semua Status</option><option>Akan Dikerjakan</option><option>Sedang Berlangsung</option><option>Selesai</option></select>
+          <select class="filter-select" onchange="renderFullProjectReport()" id="pr-priority"><option value="">Semua Prioritas</option><option>Tinggi</option><option>Sedang</option><option>Rendah</option></select>
+          <input type="text" class="search-box" placeholder="Cari project/area..." oninput="renderFullProjectReport()" id="pr-search"/>
+        </div>
+        <div id="full-project-list"></div>
+      </div>
+
+      <!-- ── MANAGER: Lost & Found Report ───────────── -->
+      <div class="page" id="page-report-lf">
+        <div class="page-header">
+          <div><div class="page-title">🔍 Laporan Lost &amp; Found</div><div class="page-sub">Rekap seluruh barang temuan semua unit hotel</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="exportLFReport()">⬇ Export CSV</button>
+        </div>
+        <div class="stat-grid" id="lf-mgr-stats"></div>
+        <div class="filter-bar">
+          <select class="filter-select" onchange="renderLFReport()" id="lfr-hotel"><option value="">Semua Unit</option></select>
+          <select class="filter-select" onchange="renderLFReport()" id="lfr-status"><option value="">Semua Status</option><option>Disimpan</option><option>Diklaim</option><option>Diserahkan ke FO</option></select>
+          <select class="filter-select" onchange="renderLFReport()" id="lfr-cat"><option value="">Semua Kategori</option><option>Elektronik</option><option>Dokumen / ID</option><option>Pakaian</option><option>Perhiasan / Aksesori</option><option>Uang / Dompet</option><option>Tas / Koper</option><option>Lainnya</option></select>
+          <input type="text" class="search-box" placeholder="Cari item / kamar / staff..." oninput="renderLFReport()" id="lfr-search"/>
+        </div>
+        <div class="card">
+          <div style="overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr><th>Tgl Ditemukan</th><th>No. Ref</th><th>Kamar</th><th>Item</th><th>Kategori</th><th>Deskripsi</th><th>Ditemukan Oleh</th><th>Unit Hotel</th><th>Lokasi Simpan</th><th>Status</th><th>Diklaim Oleh</th><th>Tgl Klaim</th></tr></thead>
+              <tbody id="lf-report-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MANAGER: Team Members ───────────────────── -->
+      <div class="page" id="page-team">
+        <div class="page-header">
+          <div><div class="page-title">👥 Manajemen Tim</div><div class="page-sub">Semua akun karyawan terdaftar</div></div>
+        </div>
+        <div class="card">
+          <div style="overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr><th>Nama</th><th>Email</th><th>Unit Hotel</th><th>Departemen</th><th>Level</th><th>Terdaftar</th></tr></thead>
+              <tbody id="team-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end main-content -->
+  </div><!-- end app-layout -->
+</div><!-- end app-screen -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MODALS
+════════════════════════════════════════════════════════ -->
+
+<!-- ADD ROOM LOG -->
+<div class="modal-overlay" id="modal-add-room">
+  <div class="modal">
+    <div class="modal-header"><h3>+ Log Pekerjaan Kamar</h3><button class="modal-close" onclick="closeModal('modal-add-room')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid form-2">
+        <div class="field"><label>No. Kamar</label><input type="text" id="rl-room" placeholder="101, 202..."/></div>
+        <div class="field"><label>Tipe Kamar</label>
+          <select id="rl-type">
+            <option>Standard</option><option>Superior</option><option>Deluxe</option>
+            <option>Suite</option><option>Executive</option><option>Family</option><option>Twin</option>
+          </select>
+        </div>
+        <div class="field"><label>Tipe Pekerjaan</label>
+          <select id="rl-worktype">
+            <option>Make Up Room</option><option>General Cleaning</option>
+          </select>
+        </div>
+        <div class="field"><label>Status Kamar</label>
+          <select id="rl-roomstatus">
+            <option>Occupied</option><option>Vacant Clean</option><option>Vacant Dirty</option>
+            <option>Out of Order</option><option>Check Out</option>
+          </select>
+        </div>
+        <div class="field"><label>Jam Mulai</label><input type="time" id="rl-start"/></div>
+        <div class="field"><label>Jam Selesai</label><input type="time" id="rl-end"/></div>
+      </div>
+      <div class="field" style="margin-top:14px;"><label>Catatan Defect / Temuan</label>
+        <textarea id="rl-defect" placeholder="Tuliskan temuan kerusakan, kekurangan, atau masalah di kamar..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-room')">Batal</button>
+      <button class="btn btn-primary" onclick="saveRoomLog()">Simpan Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- VALIDATE MODAL -->
+<div class="modal-overlay" id="modal-validate">
+  <div class="modal">
+    <div class="modal-header"><h3>Verifikasi Pekerjaan</h3><button class="modal-close" onclick="closeModal('modal-validate')">✕</button></div>
+    <div class="modal-body" id="validate-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-validate')">Batal</button>
+      <button class="btn btn-red btn-sm" onclick="doValidate('Not Verified')">✗ Not Verified</button>
+      <button class="btn btn-green" onclick="doValidate('Verified')">✓ Verified</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROJECT -->
+<div class="modal-overlay" id="modal-add-project">
+  <div class="modal">
+    <div class="modal-header"><h3>+ Project Maintenance</h3><button class="modal-close" onclick="closeModal('modal-add-project')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid form-2">
+        <div class="field" style="grid-column:span 2;"><label>Nama Project</label>
+          <input type="text" id="pj-name" placeholder="Contoh: Pengecatan Koridor Lt. 2"/>
+        </div>
+        <div class="field"><label>Area / Lokasi</label>
+          <input type="text" id="pj-area" placeholder="Kamar 101-110, Lobby, Pool..."/>
+        </div>
+        <div class="field"><label>Kategori</label>
+          <select id="pj-cat">
+            <option>Perbaikan</option><option>Pengecatan</option><option>Renovasi</option>
+            <option>Maintenance Rutin</option><option>Penggantian Furnitur</option>
+            <option>Instalasi</option><option>Deep Cleaning</option><option>Lainnya</option>
+          </select>
+        </div>
+        <div class="field"><label>Status</label>
+          <select id="pj-status">
+            <option>Akan Dikerjakan</option><option>Sedang Berlangsung</option><option>Selesai</option>
+          </select>
+        </div>
+        <div class="field"><label>Prioritas</label>
+          <select id="pj-priority">
+            <option>Tinggi</option><option>Sedang</option><option>Rendah</option>
+          </select>
+        </div>
+        <div class="field"><label>PIC (Penanggung Jawab)</label>
+          <input type="text" id="pj-pic" placeholder="Nama PIC..."/>
+        </div>
+        <div class="field"><label>Tanggal Mulai</label><input type="date" id="pj-start"/></div>
+        <div class="field"><label>Target Selesai</label><input type="date" id="pj-end"/></div>
+        <div class="field"><label>Progress (%)</label>
+          <input type="number" id="pj-progress" min="0" max="100" value="0"/>
+        </div>
+        <div class="field"><label>Estimasi Biaya (Rp)</label>
+          <input type="number" id="pj-cost" placeholder="0"/>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px;"><label>Deskripsi / Keterangan</label>
+        <textarea id="pj-desc" placeholder="Detail pekerjaan yang akan dilakukan..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-project')">Batal</button>
+      <button class="btn btn-teal" onclick="saveProject()">Simpan Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROJECT -->
+<div class="modal-overlay" id="modal-edit-project">
+  <div class="modal">
+    <div class="modal-header"><h3>Edit Project</h3><button class="modal-close" onclick="closeModal('modal-edit-project')">✕</button></div>
+    <div class="modal-body" id="edit-project-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-project')">Batal</button>
+      <button class="btn btn-teal" onclick="saveEditProject()">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD LOST & FOUND -->
+<div class="modal-overlay" id="modal-add-lf">
+  <div class="modal">
+    <div class="modal-header"><h3>🔍 Laporan Barang Temuan</h3><button class="modal-close" onclick="closeModal('modal-add-lf')">✕</button></div>
+    <div class="modal-body">
+      <div style="padding:10px 14px;background:#FEF9C3;border-radius:9px;border:1px solid #FDE68A;font-size:12px;color:#92400E;font-weight:600;margin-bottom:16px;">
+        ⚠️ Semua barang temuan wajib dilaporkan dan diserahkan ke Leader / Front Office. Jangan simpan sendiri.
+      </div>
+      <div class="form-grid form-2">
+        <div class="field"><label>No. Kamar Ditemukan</label><input type="text" id="lf-room" placeholder="101, 202..."/></div>
+        <div class="field"><label>Lokasi di Kamar</label>
+          <select id="lf-location">
+            <option>Di bawah tempat tidur</option><option>Di dalam laci</option><option>Di lemari pakaian</option>
+            <option>Di kamar mandi</option><option>Di meja nakas</option><option>Di sofa / kursi</option>
+            <option>Di belakang pintu</option><option>Lainnya</option>
+          </select>
+        </div>
+        <div class="field"><label>Kategori Barang</label>
+          <select id="lf-cat">
+            <option>Elektronik</option><option>Dokumen / ID</option><option>Pakaian</option>
+            <option>Perhiasan / Aksesori</option><option>Uang / Dompet</option><option>Tas / Koper</option><option>Lainnya</option>
+          </select>
+        </div>
+        <div class="field"><label>Nama / Jenis Barang</label><input type="text" id="lf-item" placeholder="Handphone Samsung, Dompet hitam..."/></div>
+        <div class="field"><label>Jam Ditemukan</label><input type="time" id="lf-time"/></div>
+        <div class="field"><label>Kondisi Barang</label>
+          <select id="lf-condition">
+            <option>Baik</option><option>Rusak sebagian</option><option>Tidak diketahui</option>
+          </select>
+        </div>
+        <div class="field"><label>Perkiraan Nilai</label>
+          <select id="lf-value">
+            <option>Rendah (< Rp 100rb)</option>
+            <option>Sedang (Rp 100rb – 1jt)</option>
+            <option>Tinggi (> Rp 1jt)</option>
+            <option>Tidak diketahui</option>
+          </select>
+        </div>
+        <div class="field"><label>Diserahkan ke</label>
+          <select id="lf-handover">
+            <option>Disimpan di Housekeeping</option>
+            <option>Diserahkan ke Front Office</option>
+            <option>Diserahkan ke Leader/Supervisor</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px;"><label>Deskripsi Detail Barang</label>
+        <textarea id="lf-desc" rows="2" placeholder="Warna, merek, ciri khas, kondisi detail..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-lf')">Batal</button>
+      <button class="btn btn-primary" onclick="saveLF()">Simpan Laporan</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLAIM / UPDATE L&F -->
+<div class="modal-overlay" id="modal-lf-update">
+  <div class="modal">
+    <div class="modal-header"><h3>Update Status Barang</h3><button class="modal-close" onclick="closeModal('modal-lf-update')">✕</button></div>
+    <div class="modal-body" id="lf-update-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-lf-update')">Batal</button>
+      <button class="btn btn-yellow" onclick="updateLFStatus('Diserahkan ke FO')">📤 Serahkan ke FO</button>
+      <button class="btn btn-green" onclick="updateLFStatus('Diklaim')">✓ Barang Diklaim</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STORAGE HELPERS
+// ═══════════════════════════════════════════════════════
+const LS = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
+  set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
+};
+
+const DB = {
+  users:      () => LS.get('rh_users') || [],
+  roomLogs:   () => LS.get('rh_roomlogs') || [],
+  projects:   () => LS.get('rh_projects') || [],
+  lostFound:  () => LS.get('rh_lostfound') || [],
+  saveUsers:      v => LS.set('rh_users', v),
+  saveRoomLogs:   v => LS.set('rh_roomlogs', v),
+  saveProjects:   v => LS.set('rh_projects', v),
+  saveLostFound:  v => LS.set('rh_lostfound', v),
+};
+
+// ─── Seed default accounts ───────────────────────────────
+(function seedDefaults() {
+  const users = DB.users();
+  const defaultUsers = [
+    { id:'u0', name:'Ahmad Manager', email:'manager@rehat.co.id', password:'rehat123', dept:'Housekeeping', level:'Manager', hotel:'Dago Sky', createdAt: new Date().toISOString() },
+    { id:'u1', name:'Budi Leader',   email:'leader@rehat.co.id',  password:'rehat123', dept:'Housekeeping', level:'Leader',  hotel:'Dago Sky', createdAt: new Date().toISOString() },
+    { id:'u2', name:'Cici Staff',    email:'staff@rehat.co.id',   password:'rehat123', dept:'Housekeeping', level:'Staff',   hotel:'Dago Sky', createdAt: new Date().toISOString() },
+  ];
+  defaultUsers.forEach(du => {
+    if (!users.find(u => u.email === du.email)) users.push(du);
+  });
+  DB.saveUsers(users);
+  // Seed sample room logs
+  let logs = DB.roomLogs();
+  if (logs.length === 0) {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    logs = [
+      { id:'l1', staffId:'u2', staffName:'Cici Staff', hotel:'Dago Sky', dept:'Housekeeping', room:'101', roomType:'Standard', workType:'Make Up Room', roomStatus:'Occupied', startTime:'07:30', endTime:'08:15', defect:'AC kurang dingin, perlu dilaporkan ke Engineering', verified:'Pending', verifiedBy:'', date: today, createdAt: now.toISOString() },
+      { id:'l2', staffId:'u2', staffName:'Cici Staff', hotel:'Dago Sky', dept:'Housekeeping', room:'102', roomType:'Deluxe',   workType:'General Cleaning', roomStatus:'Vacant Dirty', startTime:'08:30', endTime:'09:45', defect:'', verified:'Verified', verifiedBy:'Budi Leader', date: today, createdAt: now.toISOString() },
+      { id:'l3', staffId:'u2', staffName:'Cici Staff', hotel:'Dago Sky', dept:'Housekeeping', room:'205', roomType:'Superior', workType:'Make Up Room', roomStatus:'Occupied', startTime:'10:00', endTime:'10:40', defect:'Shower head perlu diganti', verified:'Not Verified', verifiedBy:'Budi Leader', date: today, createdAt: now.toISOString() },
+    ];
+    DB.saveRoomLogs(logs);
+  }
+  // Seed sample projects
+  let projects = DB.projects();
+  if (projects.length === 0) {
+    const today = new Date().toISOString().split('T')[0];
+    projects = [
+      { id:'p1', name:'Pengecatan Koridor Lt. 2', area:'Koridor Lantai 2', cat:'Pengecatan', status:'Sedang Berlangsung', priority:'Sedang', pic:'Budi Leader', hotel:'Dago Sky', startDate: today, endDate:'', progress:40, cost:2500000, desc:'Pengecatan ulang tembok koridor lantai 2 karena cat sudah mengelupas', createdBy:'u1', createdAt: new Date().toISOString() },
+      { id:'p2', name:'Perbaikan AC Kamar 101-105', area:'Kamar 101–105', cat:'Perbaikan', status:'Akan Dikerjakan', priority:'Tinggi', pic:'Teknisi Hendri', hotel:'Dago Sky', startDate:'', endDate:'', progress:0, cost:3800000, desc:'AC di 5 kamar tidak dingin maksimal, perlu service dan isi freon', createdBy:'u1', createdAt: new Date().toISOString() },
+      { id:'p3', name:'Deep Cleaning Pool Area', area:'Kolam Renang & Sekitar', cat:'Deep Cleaning', status:'Selesai', priority:'Rendah', pic:'Tim HK', hotel:'Patradisa Iskat', startDate: today, endDate: today, progress:100, cost:500000, desc:'Deep cleaning menyeluruh area kolam renang', createdBy:'u1', createdAt: new Date().toISOString() },
+    ];
+    DB.saveProjects(projects);
+  }
+  // Seed sample lost & found
+  let lf = DB.lostFound();
+  if (lf.length === 0) {
+    const today = new Date().toISOString().split('T')[0];
+    lf = [
+      { id:'lf1', refNo:'LF-001', staffId:'u2', staffName:'Cici Staff', hotel:'Dago Sky', room:'101', location:'Di bawah tempat tidur', cat:'Elektronik', item:'Charger laptop Dell', condition:'Baik', value:'Sedang (Rp 100rb – 1jt)', handover:'Diserahkan ke Front Office', desc:'Charger warna hitam, kondisi masih bagus', timeFound:'09:15', date:today, status:'Diserahkan ke FO', claimedBy:'', claimedAt:'', note:'Sudah diserahkan ke FO jam 10.00', updatedBy:'Budi Leader', createdAt: new Date().toISOString() },
+      { id:'lf2', refNo:'LF-002', staffId:'u2', staffName:'Cici Staff', hotel:'Dago Sky', room:'205', location:'Di kamar mandi', cat:'Perhiasan / Aksesori', item:'Gelang emas', condition:'Baik', value:'Tinggi (> Rp 1jt)', handover:'Diserahkan ke Leader/Supervisor', desc:'Gelang emas kecil, sepertinya milik tamu wanita', timeFound:'11:30', date:today, status:'Disimpan', claimedBy:'', claimedAt:'', note:'', updatedBy:'', createdAt: new Date().toISOString() },
+    ];
+    DB.saveLostFound(lf);
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// AUTH STATE
+// ═══════════════════════════════════════════════════════
+let currentUser = LS.get('rh_session');
+
+// ═══════════════════════════════════════════════════════
+// AUTH FUNCTIONS
+// ═══════════════════════════════════════════════════════
+function showTab(t) {
+  document.querySelectorAll('.auth-tab').forEach((b,i) => b.classList.toggle('active', (i===0&&t==='login')||(i===1&&t==='signup')));
+  document.getElementById('tab-login').style.display  = t==='login'  ? '' : 'none';
+  document.getElementById('tab-signup').style.display = t==='signup' ? '' : 'none';
+}
+
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.style.display = ''; el.textContent = msg;
+  el.className = 'auth-msg ' + (type==='err' ? 'err' : 'ok');
+  setTimeout(() => el.style.display='none', 4000);
+}
+
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-password').value;
+  if (!email||!pass) { showMsg('login-msg','Lengkapi email dan password.','err'); return; }
+  const user = DB.users().find(u => u.email.toLowerCase()===email && u.password===pass);
+  if (!user) { showMsg('login-msg','Email atau password salah.','err'); return; }
+  currentUser = user;
+  LS.set('rh_session', user);
+  launchApp();
+}
+
+function doSignup() {
+  const name  = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('su-pass').value;
+  const dept  = document.getElementById('su-dept').value;
+  const level = document.getElementById('su-level').value;
+  const hotel = document.getElementById('su-hotel').value;
+  if (!name||!email||!pass) { showMsg('signup-msg','Lengkapi semua field.','err'); return; }
+  if (pass.length < 6) { showMsg('signup-msg','Password minimal 6 karakter.','err'); return; }
+  const users = DB.users();
+  if (users.find(u => u.email.toLowerCase()===email)) { showMsg('signup-msg','Email sudah terdaftar.','err'); return; }
+  const newUser = { id:'u'+Date.now(), name, email, password:pass, dept, level, hotel, createdAt: new Date().toISOString() };
+  users.push(newUser); DB.saveUsers(users);
+  showMsg('signup-msg','Akun berhasil dibuat! Silakan masuk.','ok');
+  setTimeout(() => showTab('login'), 1500);
+}
+
+function doLogout() {
+  currentUser = null; localStorage.removeItem('rh_session');
+  document.getElementById('app-screen').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════════════
+// APP LAUNCH
+// ═══════════════════════════════════════════════════════
+const LEVEL_COLORS = { Staff:'#3D6FCB', Leader:'#0E9F7E', Manager:'#7C3AED' };
+
+function launchApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  const app = document.getElementById('app-screen');
+  app.classList.add('visible');
+
+  // Topbar
+  document.getElementById('app-hotel-label').textContent = currentUser.hotel + ' · ' + currentUser.dept;
+  document.getElementById('app-username').textContent    = currentUser.name;
+  document.getElementById('app-userlevel').textContent   = currentUser.level;
+  const av = document.getElementById('app-avatar');
+  av.textContent = currentUser.name.charAt(0).toUpperCase();
+  av.style.background = LEVEL_COLORS[currentUser.level] || '#3D6FCB';
+
+  buildSidebar();
+  populateHotelFilters();
+  goPage(defaultPage());
+}
+
+function defaultPage() {
+  if (currentUser.level==='Staff')   return 'roomlog';
+  if (currentUser.level==='Leader')  return 'validate';
+  if (currentUser.level==='Manager') return 'manager-dash';
+  return 'roomlog';
+}
+
+const NAV_CONFIG = {
+  Staff: [
+    { id:'roomlog',   icon:'📋', label:'Log Pekerjaan' },
+    { id:'lf-staff',  icon:'🔍', label:'Lost & Found' },
+  ],
+  Leader: [
+    { id:'validate',  icon:'✅', label:'Validasi' },
+    { id:'projects',  icon:'🔧', label:'Projects' },
+    { id:'lf-leader', icon:'🔍', label:'Lost & Found' },
+  ],
+  Manager: [
+    { id:'manager-dash',    icon:'📊', label:'Dashboard' },
+    { id:'report-rooms',    icon:'🛏️', label:'Laporan Kamar' },
+    { id:'report-projects', icon:'🔧', label:'Laporan Project' },
+    { id:'report-lf',       icon:'🔍', label:'Laporan L&F' },
+    { id:'team',            icon:'👥', label:'Tim' },
+  ],
+};
+
+function buildSidebar() {
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+  const items = NAV_CONFIG[currentUser.level] || [];
+  items.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className='nav-btn'; btn.id='nav-'+item.id;
+    btn.onclick = () => goPage(item.id);
+    btn.innerHTML = `<div class="nav-icon">${item.icon}</div><span>${item.label}</span>`;
+    nav.appendChild(btn);
+  });
+}
+
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const page = document.getElementById('page-'+id);
+  if (page) page.classList.add('active');
+  const btn = document.getElementById('nav-'+id);
+  if (btn) btn.classList.add('active');
+
+  // Render on navigate
+  if (id==='roomlog')         renderStaffStats(), renderRoomLog();
+  if (id==='lf-staff')        renderLFStaffStats(), renderLFStaff();
+  if (id==='validate')        renderLeaderStats(), renderValidateList();
+  if (id==='projects')        renderProjects();
+  if (id==='lf-leader')       renderLFLeaderStats(), renderLFLeader();
+  if (id==='manager-dash')    renderManagerDash();
+  if (id==='report-rooms')    renderFullRoomReport();
+  if (id==='report-projects') renderFullProjectReport();
+  if (id==='report-lf')       renderLFMgrStats(), renderLFReport();
+  if (id==='team')            renderTeam();
+}
+
+function populateHotelFilters() {
+  const hotels = [...new Set(DB.users().map(u=>u.hotel))].filter(Boolean);
+  const filterIds = ['filter-validate-hotel','filter-proj-hotel','mgr-filter-hotel','mgr-staff-hotel','rr-hotel','pr-hotel','lfr-hotel'];
+  filterIds.forEach(fid => {
+    const el = document.getElementById(fid); if(!el) return;
+    const cur = el.value;
+    while (el.options.length > 1) el.remove(1);
+    hotels.forEach(h => { const o=document.createElement('option'); o.value=h; o.textContent=h; el.appendChild(o); });
+    if (cur) el.value = cur;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// STAFF — ROOM LOG
+// ═══════════════════════════════════════════════════════
+function renderStaffStats() {
+  const logs = DB.roomLogs().filter(l => l.staffId === currentUser.id);
+  const today = new Date().toISOString().split('T')[0];
+  const todayLogs = logs.filter(l=>l.date===today);
+  const verified = logs.filter(l=>l.verified==='Verified').length;
+  const defects  = logs.filter(l=>l.defect && l.defect.trim()).length;
+  document.getElementById('staff-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon" style="background:#EEF3FB;">📋</div><div class="stat-val mono">${todayLogs.length}</div><div class="stat-lbl">Log Hari Ini</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#D1FAE5;">✅</div><div class="stat-val mono">${verified}</div><div class="stat-lbl">Verified</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEE2E2;">⚠️</div><div class="stat-val mono">${defects}</div><div class="stat-lbl">Laporan Defect</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">🛏️</div><div class="stat-val mono">${logs.length}</div><div class="stat-lbl">Total Log</div></div>`;
+}
+
+function renderRoomLog() {
+  const filter = document.getElementById('filter-rl-status')?.value || '';
+  let logs = DB.roomLogs().filter(l => l.staffId === currentUser.id);
+  if (filter) logs = logs.filter(l=>l.workType===filter);
+  logs.sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+  const el = document.getElementById('roomlog-list');
+  if (!logs.length) { el.innerHTML = '<div class="empty-state"><div class="es-icon">📋</div><h4>Belum ada log</h4><p>Tap tombol "+ Tambah Log" untuk mulai mencatat.</p></div>'; return; }
+  el.innerHTML = logs.map(l => {
+    const dur = calcDuration(l.startTime, l.endTime);
+    const vBadge = { Verified:'badge-green', 'Not Verified':'badge-red', Pending:'badge-yellow' }[l.verified] || 'badge-gray';
+    return `<div class="room-entry-card">
+      <div class="rec-number">${l.room}</div>
+      <div class="rec-body">
+        <div class="rec-title">${l.roomType} · ${l.workType}</div>
+        <div class="rec-meta">
+          <span>📅 ${l.date}</span>
+          <span>🕐 ${l.startTime} – ${l.endTime} (${dur})</span>
+          <span class="badge ${l.workType==='Make Up Room'?'badge-blue':'badge-teal'}">${l.workType}</span>
+          <span class="badge badge-gray">${l.roomStatus}</span>
+          <span class="badge ${vBadge}">${l.verified}</span>
+        </div>
+        ${l.defect ? `<div class="rec-defect">⚠️ ${l.defect}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterRoomLog() { renderRoomLog(); }
+
+function saveRoomLog() {
+  const room  = document.getElementById('rl-room').value.trim();
+  const type  = document.getElementById('rl-type').value;
+  const wtype = document.getElementById('rl-worktype').value;
+  const rst   = document.getElementById('rl-roomstatus').value;
+  const st    = document.getElementById('rl-start').value;
+  const en    = document.getElementById('rl-end').value;
+  const def   = document.getElementById('rl-defect').value.trim();
+  if (!room||!st||!en) { alert('No. Kamar, jam mulai, dan jam selesai wajib diisi.'); return; }
+  const logs = DB.roomLogs();
+  logs.push({ id:'l'+Date.now(), staffId:currentUser.id, staffName:currentUser.name, hotel:currentUser.hotel, dept:currentUser.dept, room, roomType:type, workType:wtype, roomStatus:rst, startTime:st, endTime:en, defect:def, verified:'Pending', verifiedBy:'', date:new Date().toISOString().split('T')[0], createdAt:new Date().toISOString() });
+  DB.saveRoomLogs(logs);
+  closeModal('modal-add-room');
+  document.getElementById('rl-room').value=''; document.getElementById('rl-defect').value='';
+  renderStaffStats(); renderRoomLog();
+}
+
+// ═══════════════════════════════════════════════════════
+// LEADER — VALIDATE
+// ═══════════════════════════════════════════════════════
+function renderLeaderStats() {
+  const logs = DB.roomLogs().filter(l => l.hotel === currentUser.hotel);
+  const today = new Date().toISOString().split('T')[0];
+  const pending  = logs.filter(l=>l.verified==='Pending').length;
+  const verified = logs.filter(l=>l.verified==='Verified').length;
+  const notV     = logs.filter(l=>l.verified==='Not Verified').length;
+  const todayLogs= logs.filter(l=>l.date===today).length;
+  document.getElementById('leader-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">⏳</div><div class="stat-val mono">${pending}</div><div class="stat-lbl">Perlu Validasi</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#D1FAE5;">✅</div><div class="stat-val mono">${verified}</div><div class="stat-lbl">Verified</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEE2E2;">✗</div><div class="stat-val mono">${notV}</div><div class="stat-lbl">Not Verified</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#EEF3FB;">📋</div><div class="stat-val mono">${todayLogs}</div><div class="stat-lbl">Log Hari Ini</div></div>`;
+}
+
+let validateTargetId = null;
+function renderValidateList() {
+  const search = document.getElementById('search-validate')?.value.toLowerCase()||'';
+  const hFilter= document.getElementById('filter-validate-hotel')?.value||'';
+  let logs = DB.roomLogs();
+  if (hFilter) logs = logs.filter(l=>l.hotel===hFilter);
+  else logs = logs.filter(l=>l.hotel===currentUser.hotel);
+  if (search) logs = logs.filter(l=>l.room.toLowerCase().includes(search)||l.staffName.toLowerCase().includes(search));
+  logs.sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+  const tbody = document.getElementById('validate-tbody');
+  if (!logs.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray-400);">Tidak ada data.</td></tr>'; return; }
+  tbody.innerHTML = logs.map(l => {
+    const dur = calcDuration(l.startTime, l.endTime);
+    const vBadge = { Verified:'badge-green', 'Not Verified':'badge-red', Pending:'badge-yellow' }[l.verified]||'badge-gray';
+    const actionBtn = l.verified==='Pending'
+      ? `<button class="btn btn-sm btn-primary" onclick="openValidateModal('${l.id}')">Validasi</button>`
+      : `<button class="btn btn-sm btn-ghost" onclick="openValidateModal('${l.id}')">Edit</button>`;
+    return `<tr>
+      <td><strong>${l.room}</strong></td>
+      <td>${l.staffName}</td>
+      <td>${l.hotel}</td>
+      <td><span class="badge ${l.workType==='Make Up Room'?'badge-blue':'badge-teal'}">${l.workType}</span></td>
+      <td class="mono" style="font-size:12px;">${l.date}</td>
+      <td class="mono" style="font-size:12px;">${dur}</td>
+      <td>${l.defect ? `<span style="color:var(--red-dark);font-size:12px;">⚠️ Ada</span>` : '<span style="color:var(--gray-400);font-size:12px;">—</span>'}</td>
+      <td><span class="badge ${vBadge}">${l.verified}</span></td>
+      <td>${actionBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openValidateModal(logId) {
+  validateTargetId = logId;
+  const l = DB.roomLogs().find(l=>l.id===logId);
+  if (!l) return;
+  const dur = calcDuration(l.startTime, l.endTime);
+  document.getElementById('validate-modal-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="padding:12px;background:var(--gray-bg);border-radius:9px;"><div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:4px;">Kamar</div><div style="font-size:18px;font-weight:800;">${l.room} – ${l.roomType}</div></div>
+      <div style="padding:12px;background:var(--gray-bg);border-radius:9px;"><div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:4px;">Staff</div><div style="font-size:14px;font-weight:600;">${l.staffName}</div><div style="font-size:11px;color:var(--gray-400);">${l.hotel}</div></div>
+      <div style="padding:12px;background:var(--gray-bg);border-radius:9px;"><div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:4px;">Tipe Kerja</div><div style="font-size:14px;font-weight:600;">${l.workType}</div></div>
+      <div style="padding:12px;background:var(--gray-bg);border-radius:9px;"><div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:4px;">Durasi</div><div style="font-size:14px;font-weight:600;">${l.startTime} – ${l.endTime} (${dur})</div></div>
+    </div>
+    ${l.defect ? `<div style="padding:12px 14px;background:var(--red-light);border-radius:9px;margin-bottom:14px;"><div style="font-size:10px;font-weight:700;color:var(--red-dark);text-transform:uppercase;margin-bottom:4px;">⚠️ Defect / Temuan</div><div style="font-size:13px;color:var(--red-dark);">${l.defect}</div></div>` : '<div style="padding:12px;background:var(--green-light);border-radius:9px;margin-bottom:14px;font-size:13px;color:var(--green-dark);">✓ Tidak ada defect dilaporkan</div>'}
+    <div class="field"><label>Catatan Verifikator</label><textarea id="validate-note" rows="2" placeholder="Tambahkan catatan (opsional)...">${l.verifyNote||''}</textarea></div>`;
+  openModal('modal-validate');
+}
+
+function doValidate(status) {
+  if (!validateTargetId) return;
+  const logs = DB.roomLogs();
+  const idx = logs.findIndex(l=>l.id===validateTargetId);
+  if (idx<0) return;
+  logs[idx].verified   = status;
+  logs[idx].verifiedBy = currentUser.name;
+  logs[idx].verifyNote = document.getElementById('validate-note')?.value || '';
+  logs[idx].verifiedAt = new Date().toISOString();
+  DB.saveRoomLogs(logs);
+  closeModal('modal-validate');
+  renderLeaderStats(); renderValidateList();
+}
+
+// ═══════════════════════════════════════════════════════
+// LEADER — PROJECTS
+// ═══════════════════════════════════════════════════════
+function renderProjects() {
+  const fStatus = document.getElementById('filter-proj-status')?.value||'';
+  const fHotel  = document.getElementById('filter-proj-hotel')?.value||'';
+  const search  = document.getElementById('search-proj')?.value.toLowerCase()||'';
+  let projs = DB.projects();
+  if (fStatus) projs = projs.filter(p=>p.status===fStatus);
+  if (fHotel)  projs = projs.filter(p=>p.hotel===fHotel);
+  else if(currentUser.level==='Leader') projs = projs.filter(p=>p.hotel===currentUser.hotel);
+  if (search)  projs = projs.filter(p=>p.name.toLowerCase().includes(search)||p.area.toLowerCase().includes(search));
+  projs.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const el = document.getElementById('projects-list');
+  if (!projs.length) { el.innerHTML='<div class="empty-state"><div class="es-icon">🔧</div><h4>Belum ada project</h4><p>Tambahkan project baru dengan tombol di atas.</p></div>'; return; }
+  const statusColor = { 'Akan Dikerjakan':'badge-yellow','Sedang Berlangsung':'badge-blue','Selesai':'badge-green' };
+  const prioColor = { 'Tinggi':'badge-red','Sedang':'badge-yellow','Rendah':'badge-gray' };
+  el.innerHTML = projs.map(p => `
+    <div class="project-card">
+      <div class="pc-header">
+        <div>
+          <div class="pc-title">${p.name}</div>
+          <div class="pc-area">📍 ${p.area} · ${p.hotel}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="badge ${statusColor[p.status]||'badge-gray'}">${p.status}</span>
+          ${currentUser.level==='Leader' ? `<button class="btn btn-ghost btn-sm" onclick="openEditProject('${p.id}')">✏️ Edit</button>` : ''}
+        </div>
+      </div>
+      <div class="pc-meta">
+        <span class="badge ${prioColor[p.priority]||'badge-gray'}">🎯 ${p.priority}</span>
+        <span class="badge badge-gray">📂 ${p.cat}</span>
+        <span class="badge badge-purple">👤 ${p.pic}</span>
+        ${p.startDate ? `<span class="badge badge-gray">📅 ${p.startDate}${p.endDate?' → '+p.endDate:''}</span>` : ''}
+        ${p.cost ? `<span class="badge badge-gray">💰 Rp ${Number(p.cost).toLocaleString('id-ID')}</span>` : ''}
+      </div>
+      ${p.desc ? `<div style="font-size:12px;color:var(--gray-600);margin-bottom:10px;">${p.desc}</div>` : ''}
+      <div class="pc-progress">
+        <div class="pc-progress-lbl"><span>Progress</span><span>${p.progress}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%;background:${p.progress>=100?'var(--green)':p.progress>=50?'var(--blue)':'var(--yellow)'}"></div></div>
+      </div>
+    </div>`).join('');
+}
+
+let editingProjectId = null;
+function openEditProject(id) {
+  editingProjectId = id;
+  const p = DB.projects().find(p=>p.id===id);
+  if (!p) return;
+  document.getElementById('edit-project-body').innerHTML = `
+    <div class="form-grid form-2">
+      <div class="field" style="grid-column:span 2;"><label>Nama Project</label><input type="text" id="ep-name" value="${p.name}"/></div>
+      <div class="field"><label>Area / Lokasi</label><input type="text" id="ep-area" value="${p.area}"/></div>
+      <div class="field"><label>Kategori</label><select id="ep-cat">${['Perbaikan','Pengecatan','Renovasi','Maintenance Rutin','Penggantian Furnitur','Instalasi','Deep Cleaning','Lainnya'].map(c=>`<option ${c===p.cat?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="field"><label>Status</label><select id="ep-status">${['Akan Dikerjakan','Sedang Berlangsung','Selesai'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="field"><label>Prioritas</label><select id="ep-priority">${['Tinggi','Sedang','Rendah'].map(s=>`<option ${s===p.priority?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="field"><label>PIC</label><input type="text" id="ep-pic" value="${p.pic}"/></div>
+      <div class="field"><label>Tanggal Mulai</label><input type="date" id="ep-start" value="${p.startDate||''}"/></div>
+      <div class="field"><label>Target Selesai</label><input type="date" id="ep-end" value="${p.endDate||''}"/></div>
+      <div class="field"><label>Progress (%)</label><input type="number" id="ep-progress" min="0" max="100" value="${p.progress}"/></div>
+      <div class="field"><label>Estimasi Biaya (Rp)</label><input type="number" id="ep-cost" value="${p.cost||0}"/></div>
+      <div class="field" style="grid-column:span 2;"><label>Deskripsi</label><textarea id="ep-desc">${p.desc||''}</textarea></div>
+    </div>`;
+  openModal('modal-edit-project');
+}
+
+function saveProject() {
+  const name = document.getElementById('pj-name').value.trim();
+  if (!name) { alert('Nama project wajib diisi.'); return; }
+  const projs = DB.projects();
+  projs.push({
+    id:'p'+Date.now(), name, area:document.getElementById('pj-area').value, cat:document.getElementById('pj-cat').value,
+    status:document.getElementById('pj-status').value, priority:document.getElementById('pj-priority').value,
+    pic:document.getElementById('pj-pic').value, hotel:currentUser.hotel,
+    startDate:document.getElementById('pj-start').value, endDate:document.getElementById('pj-end').value,
+    progress:parseInt(document.getElementById('pj-progress').value)||0,
+    cost:document.getElementById('pj-cost').value,
+    desc:document.getElementById('pj-desc').value, createdBy:currentUser.id, createdAt:new Date().toISOString()
+  });
+  DB.saveProjects(projs);
+  closeModal('modal-add-project');
+  document.getElementById('pj-name').value=''; document.getElementById('pj-desc').value=''; document.getElementById('pj-progress').value='0';
+  renderProjects();
+}
+
+function saveEditProject() {
+  if (!editingProjectId) return;
+  const projs = DB.projects();
+  const idx = projs.findIndex(p=>p.id===editingProjectId);
+  if (idx<0) return;
+  projs[idx] = { ...projs[idx],
+    name:document.getElementById('ep-name').value, area:document.getElementById('ep-area').value,
+    cat:document.getElementById('ep-cat').value, status:document.getElementById('ep-status').value,
+    priority:document.getElementById('ep-priority').value, pic:document.getElementById('ep-pic').value,
+    startDate:document.getElementById('ep-start').value, endDate:document.getElementById('ep-end').value,
+    progress:parseInt(document.getElementById('ep-progress').value)||0,
+    cost:document.getElementById('ep-cost').value, desc:document.getElementById('ep-desc').value,
+    updatedAt:new Date().toISOString()
+  };
+  DB.saveProjects(projs);
+  closeModal('modal-edit-project');
+  renderProjects();
+}
+
+// ═══════════════════════════════════════════════════════
+// MANAGER — DASHBOARD
+// ═══════════════════════════════════════════════════════
+function renderManagerDash() {
+  const hFilter   = document.getElementById('mgr-filter-hotel')?.value||'';
+  const dateFilter= document.getElementById('mgr-filter-date')?.value||'today';
+  const today = new Date(); const todayStr = today.toISOString().split('T')[0];
+
+  let logs = DB.roomLogs();
+  let projs = DB.projects();
+  if (hFilter) { logs=logs.filter(l=>l.hotel===hFilter); projs=projs.filter(p=>p.hotel===hFilter); }
+
+  // Date filter
+  logs = filterByDate(logs, dateFilter);
+
+  const pending  = logs.filter(l=>l.verified==='Pending').length;
+  const verified = logs.filter(l=>l.verified==='Verified').length;
+  const activeP  = projs.filter(p=>p.status==='Sedang Berlangsung').length;
+  const defects  = logs.filter(l=>l.defect&&l.defect.trim()).length;
+  const lfPending= DB.lostFound().filter(i=>(!hFilter||i.hotel===hFilter)&&i.status==='Disimpan').length;
+
+  document.getElementById('mgr-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon" style="background:#EEF3FB;">🛏️</div><div class="stat-val mono">${logs.length}</div><div class="stat-lbl">Total Log Kamar</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#D1FAE5;">✅</div><div class="stat-val mono">${verified}</div><div class="stat-lbl">Verified</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">⏳</div><div class="stat-val mono">${pending}</div><div class="stat-lbl">Pending Verifikasi</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FCE7F3;">🔧</div><div class="stat-val mono">${activeP}</div><div class="stat-lbl">Project Aktif</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">🔍</div><div class="stat-val mono">${lfPending}</div><div class="stat-lbl">L&F Belum Diklaim</div></div>`;
+
+  // Recent room logs
+  const recentLogs = [...logs].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,8);
+  const rlEl = document.getElementById('mgr-recent-rooms');
+  rlEl.innerHTML = recentLogs.length ? recentLogs.map(l => {
+    const vBadge = { Verified:'badge-green','Not Verified':'badge-red',Pending:'badge-yellow' }[l.verified]||'badge-gray';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-200);">
+      <div style="width:38px;height:38px;border-radius:8px;background:var(--blue-light);color:var(--blue);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;font-family:'IBM Plex Mono',monospace;">${l.room}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;">${l.staffName} <span style="font-weight:400;color:var(--gray-400);">${l.hotel}</span></div>
+        <div style="font-size:11px;color:var(--gray-400);">${l.workType} · ${l.date}</div>
+      </div>
+      <span class="badge ${vBadge}" style="white-space:nowrap;">${l.verified}</span>
+    </div>`;
+  }).join('') : '<div class="empty-state" style="padding:24px;"><p>Tidak ada data.</p></div>';
+
+  // Active projects
+  const activeProjs = projs.filter(p=>p.status==='Sedang Berlangsung').slice(0,6);
+  const apEl = document.getElementById('mgr-active-projects');
+  apEl.innerHTML = activeProjs.length ? activeProjs.map(p => `
+    <div style="padding:12px 0;border-bottom:1px solid var(--gray-200);">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:13px;font-weight:600;">${p.name}</div>
+        <span style="font-size:11px;font-weight:700;color:var(--blue);">${p.progress}%</span>
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-bottom:6px;">👤 ${p.pic} · ${p.hotel}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%;background:var(--blue);"></div></div>
+    </div>`).join('') : '<div class="empty-state" style="padding:24px;"><p>Tidak ada project aktif.</p></div>';
+
+  renderStaffReport();
+}
+
+function renderStaffReport() {
+  const hFilter = document.getElementById('mgr-staff-hotel')?.value||'';
+  let users = DB.users();
+  if (hFilter) users = users.filter(u=>u.hotel===hFilter);
+  const logs = DB.roomLogs();
+  const projs = DB.projects();
+  const tbody = document.getElementById('staff-report-tbody');
+  if (!users.length) { tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--gray-400);">Tidak ada data.</td></tr>'; return; }
+  const LEVEL_BADGE = { Staff:'badge-blue', Leader:'badge-teal', Manager:'badge-purple' };
+  tbody.innerHTML = users.map(u => {
+    const uLogs = logs.filter(l=>l.staffId===u.id);
+    const uVerified = uLogs.filter(l=>l.verified==='Verified').length;
+    const uDefects  = uLogs.filter(l=>l.defect&&l.defect.trim()).length;
+    const uProjs    = projs.filter(p=>p.pic===u.name).length;
+    return `<tr>
+      <td style="font-weight:600;">${u.name}</td>
+      <td>${u.hotel}</td>
+      <td>${u.dept}</td>
+      <td><span class="badge ${LEVEL_BADGE[u.level]||'badge-gray'}">${u.level}</span></td>
+      <td class="mono">${uLogs.length}</td>
+      <td class="mono" style="color:var(--green-dark);">${uVerified}</td>
+      <td class="mono" style="color:var(--red-dark);">${uDefects}</td>
+      <td class="mono">${uProjs}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// MANAGER — FULL REPORTS
+// ═══════════════════════════════════════════════════════
+function renderFullRoomReport() {
+  const hFilter  = document.getElementById('rr-hotel')?.value||'';
+  const wFilter  = document.getElementById('rr-status')?.value||'';
+  const vFilter  = document.getElementById('rr-verified')?.value||'';
+  const search   = document.getElementById('rr-search')?.value.toLowerCase()||'';
+  let logs = DB.roomLogs();
+  if (hFilter) logs=logs.filter(l=>l.hotel===hFilter);
+  if (wFilter) logs=logs.filter(l=>l.workType===wFilter);
+  if (vFilter) logs=logs.filter(l=>l.verified===vFilter);
+  if (search)  logs=logs.filter(l=>l.room.toLowerCase().includes(search)||l.staffName.toLowerCase().includes(search));
+  logs.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const vBadge = { Verified:'badge-green','Not Verified':'badge-red',Pending:'badge-yellow' };
+  const tbody = document.getElementById('full-room-tbody');
+  if (!logs.length) { tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--gray-400);">Tidak ada data.</td></tr>'; return; }
+  tbody.innerHTML = logs.map(l => {
+    const dur = calcDuration(l.startTime, l.endTime);
+    return `<tr>
+      <td class="mono" style="font-size:11px;">${l.date}</td>
+      <td><strong>${l.room}</strong></td>
+      <td>${l.roomType}</td>
+      <td>${l.staffName}</td>
+      <td>${l.hotel}</td>
+      <td><span class="badge ${l.workType==='Make Up Room'?'badge-blue':'badge-teal'}">${l.workType}</span></td>
+      <td class="mono" style="font-size:11px;">${l.startTime}</td>
+      <td class="mono" style="font-size:11px;">${l.endTime}</td>
+      <td class="mono" style="font-size:11px;">${dur}</td>
+      <td style="max-width:140px;font-size:11px;color:var(--red-dark);">${l.defect||'—'}</td>
+      <td><span class="badge ${vBadge[l.verified]||'badge-gray'}">${l.verified}</span></td>
+      <td style="font-size:11px;color:var(--gray-400);">${l.verifiedBy||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFullProjectReport() {
+  const hFilter = document.getElementById('pr-hotel')?.value||'';
+  const sFilter = document.getElementById('pr-status')?.value||'';
+  const pFilter = document.getElementById('pr-priority')?.value||'';
+  const search  = document.getElementById('pr-search')?.value.toLowerCase()||'';
+  let projs = DB.projects();
+  if (hFilter) projs=projs.filter(p=>p.hotel===hFilter);
+  if (sFilter) projs=projs.filter(p=>p.status===sFilter);
+  if (pFilter) projs=projs.filter(p=>p.priority===pFilter);
+  if (search)  projs=projs.filter(p=>p.name.toLowerCase().includes(search)||p.area.toLowerCase().includes(search));
+  projs.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const el = document.getElementById('full-project-list');
+  if (!projs.length) { el.innerHTML='<div class="empty-state"><div class="es-icon">🔧</div><h4>Tidak ada project.</h4></div>'; return; }
+  const statusColor = { 'Akan Dikerjakan':'badge-yellow','Sedang Berlangsung':'badge-blue','Selesai':'badge-green' };
+  const prioColor   = { 'Tinggi':'badge-red','Sedang':'badge-yellow','Rendah':'badge-gray' };
+  el.innerHTML = projs.map(p => `
+    <div class="project-card">
+      <div class="pc-header">
+        <div><div class="pc-title">${p.name}</div><div class="pc-area">📍 ${p.area} · ${p.hotel}</div></div>
+        <div style="display:flex;gap:6px;">
+          <span class="badge ${statusColor[p.status]||'badge-gray'}">${p.status}</span>
+          <span class="badge ${prioColor[p.priority]||'badge-gray'}">${p.priority}</span>
+        </div>
+      </div>
+      <div class="pc-meta">
+        <span class="badge badge-gray">📂 ${p.cat}</span>
+        <span class="badge badge-purple">👤 ${p.pic}</span>
+        ${p.startDate?`<span class="badge badge-gray">📅 ${p.startDate}${p.endDate?' → '+p.endDate:''}</span>`:''}
+        ${p.cost?`<span class="badge badge-gray">💰 Rp ${Number(p.cost).toLocaleString('id-ID')}</span>`:''}
+      </div>
+      ${p.desc?`<div style="font-size:12px;color:var(--gray-600);margin-bottom:10px;">${p.desc}</div>`:''}
+      <div class="pc-progress">
+        <div class="pc-progress-lbl"><span>Progress</span><span>${p.progress}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%;background:${p.progress>=100?'var(--green)':p.progress>=50?'var(--blue)':'var(--yellow)'}"></div></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderTeam() {
+  const users = DB.users();
+  const LEVEL_BADGE = { Staff:'badge-blue', Leader:'badge-teal', Manager:'badge-purple' };
+  const tbody = document.getElementById('team-tbody');
+  tbody.innerHTML = users.map(u => `<tr>
+    <td style="font-weight:600;">${u.name}</td>
+    <td>${u.email}</td>
+    <td>${u.hotel}</td>
+    <td>${u.dept}</td>
+    <td><span class="badge ${LEVEL_BADGE[u.level]||'badge-gray'}">${u.level}</span></td>
+    <td class="mono" style="font-size:11px;">${u.createdAt?.split('T')[0]||'—'}</td>
+  </tr>`).join('');
+}
+
+function exportReport() {
+  const logs = DB.roomLogs();
+  const header = ['Tanggal','Kamar','Tipe Kamar','Staff','Unit Hotel','Tipe Kerja','Mulai','Selesai','Durasi','Defect','Status Verifikasi','Diverifikasi Oleh'];
+  const rows = logs.map(l => [l.date,l.room,l.roomType,l.staffName,l.hotel,l.workType,l.startTime,l.endTime,calcDuration(l.startTime,l.endTime),l.defect||'',l.verified,l.verifiedBy||'']);
+  const csv = [header, ...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`RehatHK_RoomLogs_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+}
+
+// ═══════════════════════════════════════════════════════
+// LOST & FOUND — HELPERS
+// ═══════════════════════════════════════════════════════
+const LF_ICONS = { 'Elektronik':'📱','Dokumen / ID':'📄','Pakaian':'👕','Perhiasan / Aksesori':'💍','Uang / Dompet':'💰','Tas / Koper':'👜','Lainnya':'📦' };
+const LF_STATUS_BADGE = { 'Disimpan':'badge-yellow','Diklaim':'badge-green','Diserahkan ke FO':'badge-blue' };
+const LF_VALUE_BADGE  = { 'Tinggi (> Rp 1jt)':'badge-red','Sedang (Rp 100rb – 1jt)':'badge-yellow','Rendah (< Rp 100rb)':'badge-gray','Tidak diketahui':'badge-gray' };
+
+function genRefNo() {
+  const lf = DB.lostFound();
+  const n  = (lf.length + 1).toString().padStart(3,'0');
+  return 'LF-' + n;
+}
+
+// ─── STAFF L&F ────────────────────────────────────────
+function renderLFStaffStats() {
+  const items = DB.lostFound().filter(i=>i.staffId===currentUser.id);
+  const stored  = items.filter(i=>i.status==='Disimpan').length;
+  const claimed = items.filter(i=>i.status==='Diklaim').length;
+  const fo      = items.filter(i=>i.status==='Diserahkan ke FO').length;
+  document.getElementById('lf-staff-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">🔍</div><div class="stat-val mono">${items.length}</div><div class="stat-lbl">Total Laporan</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">📦</div><div class="stat-val mono">${stored}</div><div class="stat-lbl">Disimpan</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#D1FAE5;">✓</div><div class="stat-val mono">${claimed}</div><div class="stat-lbl">Diklaim</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#EEF3FB;">📤</div><div class="stat-val mono">${fo}</div><div class="stat-lbl">Ke Front Office</div></div>`;
+}
+
+function renderLFStaff() {
+  const fStatus = document.getElementById('filter-lf-staff-status')?.value||'';
+  let items = DB.lostFound().filter(i=>i.staffId===currentUser.id);
+  if (fStatus) items = items.filter(i=>i.status===fStatus);
+  items.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const el = document.getElementById('lf-staff-list');
+  if (!items.length) { el.innerHTML='<div class="empty-state"><div class="es-icon">🔍</div><h4>Belum ada laporan</h4><p>Laporkan barang temuan dengan tombol "+ Lapor Barang".</p></div>'; return; }
+  el.innerHTML = items.map(lf => `
+    <div class="lf-card">
+      <div class="lf-icon-box" style="background:${lf.cat==='Elektronik'?'#EEF3FB':lf.cat==='Perhiasan / Aksesori'?'#FEF3C7':lf.cat==='Dokumen / ID'?'#EDE9FE':'#F0FDF4'};">${LF_ICONS[lf.cat]||'📦'}</div>
+      <div class="lf-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div class="lf-title">${lf.item}</div>
+          <span class="mono" style="font-size:11px;color:var(--gray-400);">${lf.refNo}</span>
+        </div>
+        <div class="lf-meta">
+          <span>🛏️ Kamar ${lf.room}</span>
+          <span>📍 ${lf.location}</span>
+          <span>🕐 ${lf.timeFound}</span>
+          <span>📅 ${lf.date}</span>
+        </div>
+        <div class="lf-status-bar">
+          <span class="badge badge-gray">${lf.cat}</span>
+          <span class="badge ${LF_VALUE_BADGE[lf.value]||'badge-gray'}">${lf.value}</span>
+          <span class="badge ${LF_STATUS_BADGE[lf.status]||'badge-gray'}">${lf.status}</span>
+          <span class="badge badge-gray">Kondisi: ${lf.condition}</span>
+        </div>
+        ${lf.desc ? `<div style="font-size:12px;color:var(--gray-600);margin-top:6px;">${lf.desc}</div>` : ''}
+        ${lf.status==='Diklaim' ? `<div class="lf-claimed-box">✓ Diklaim oleh: <strong>${lf.claimedBy}</strong> pada ${lf.claimedAt?.split('T')[0]||'—'}</div>` : ''}
+        <div class="lf-timeline">
+          <div class="lf-tl-item"><div class="lf-tl-dot" style="background:var(--blue);"></div><span>Dilaporkan oleh ${lf.staffName} · ${lf.date} ${lf.timeFound}</span></div>
+          ${lf.updatedBy ? `<div class="lf-tl-item"><div class="lf-tl-dot" style="background:var(--green);"></div><span>Diupdate oleh ${lf.updatedBy}${lf.note?' — '+lf.note:''}</span></div>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function saveLF() {
+  const room = document.getElementById('lf-room').value.trim();
+  const item = document.getElementById('lf-item').value.trim();
+  if (!room||!item) { alert('No. Kamar dan nama barang wajib diisi.'); return; }
+  const items = DB.lostFound();
+  items.push({
+    id: 'lf'+Date.now(),
+    refNo: genRefNo(),
+    staffId: currentUser.id,
+    staffName: currentUser.name,
+    hotel: currentUser.hotel,
+    room,
+    location: document.getElementById('lf-location').value,
+    cat: document.getElementById('lf-cat').value,
+    item,
+    condition: document.getElementById('lf-condition').value,
+    value: document.getElementById('lf-value').value,
+    handover: document.getElementById('lf-handover').value,
+    desc: document.getElementById('lf-desc').value.trim(),
+    timeFound: document.getElementById('lf-time').value || new Date().toTimeString().slice(0,5),
+    date: new Date().toISOString().split('T')[0],
+    status: document.getElementById('lf-handover').value === 'Diserahkan ke Front Office' ? 'Diserahkan ke FO' : 'Disimpan',
+    claimedBy: '', claimedAt: '', note: '', updatedBy: '',
+    createdAt: new Date().toISOString()
+  });
+  DB.saveLostFound(items);
+  closeModal('modal-add-lf');
+  ['lf-room','lf-item','lf-desc','lf-time'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  renderLFStaffStats(); renderLFStaff();
+}
+
+// ─── LEADER L&F ───────────────────────────────────────
+function renderLFLeaderStats() {
+  const items = DB.lostFound().filter(i=>i.hotel===currentUser.hotel);
+  const stored  = items.filter(i=>i.status==='Disimpan').length;
+  const claimed = items.filter(i=>i.status==='Diklaim').length;
+  const fo      = items.filter(i=>i.status==='Diserahkan ke FO').length;
+  document.getElementById('lf-leader-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">🔍</div><div class="stat-val mono">${items.length}</div><div class="stat-lbl">Total Barang</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">📦</div><div class="stat-val mono">${stored}</div><div class="stat-lbl">Perlu Tindakan</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#EEF3FB;">📤</div><div class="stat-val mono">${fo}</div><div class="stat-lbl">Di Front Office</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#D1FAE5;">✓</div><div class="stat-val mono">${claimed}</div><div class="stat-lbl">Sudah Diklaim</div></div>`;
+}
+
+function renderLFLeader() {
+  const fStatus = document.getElementById('filter-lfl-status')?.value||'';
+  const fCat    = document.getElementById('filter-lfl-cat')?.value||'';
+  const search  = document.getElementById('search-lfl')?.value.toLowerCase()||'';
+  let items = DB.lostFound().filter(i=>i.hotel===currentUser.hotel);
+  if (fStatus) items = items.filter(i=>i.status===fStatus);
+  if (fCat)    items = items.filter(i=>i.cat===fCat);
+  if (search)  items = items.filter(i=>i.item.toLowerCase().includes(search)||i.room.toLowerCase().includes(search)||i.staffName.toLowerCase().includes(search));
+  items.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const el = document.getElementById('lf-leader-list');
+  if (!items.length) { el.innerHTML='<div class="empty-state"><div class="es-icon">🔍</div><h4>Tidak ada data</h4><p>Belum ada laporan barang temuan.</p></div>'; return; }
+  el.innerHTML = items.map(lf => `
+    <div class="lf-card">
+      <div class="lf-icon-box" style="background:${lf.cat==='Elektronik'?'#EEF3FB':lf.cat==='Perhiasan / Aksesori'?'#FEF3C7':lf.cat==='Dokumen / ID'?'#EDE9FE':'#F0FDF4'};">${LF_ICONS[lf.cat]||'📦'}</div>
+      <div class="lf-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="lf-title">${lf.item} <span class="mono" style="font-size:11px;color:var(--gray-400);">${lf.refNo}</span></div>
+            <div class="lf-meta">
+              <span>🛏️ Kamar ${lf.room}</span><span>📍 ${lf.location}</span>
+              <span>👤 ${lf.staffName}</span><span>📅 ${lf.date} ${lf.timeFound}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-start;">
+            <span class="badge ${LF_STATUS_BADGE[lf.status]||'badge-gray'}">${lf.status}</span>
+            ${lf.status!=='Diklaim' ? `<button class="btn btn-sm btn-primary" onclick="openLFUpdate('${lf.id}')">Update</button>` : ''}
+          </div>
+        </div>
+        <div class="lf-status-bar" style="margin-top:6px;">
+          <span class="badge badge-gray">${lf.cat}</span>
+          <span class="badge ${LF_VALUE_BADGE[lf.value]||'badge-gray'}">${lf.value}</span>
+          <span class="badge badge-gray">Kondisi: ${lf.condition}</span>
+          <span class="badge badge-gray">${lf.handover}</span>
+        </div>
+        ${lf.desc ? `<div style="font-size:12px;color:var(--gray-600);margin-top:6px;">${lf.desc}</div>` : ''}
+        ${lf.status==='Diklaim' ? `<div class="lf-claimed-box">✓ Diklaim oleh: <strong>${lf.claimedBy}</strong> pada ${lf.claimedAt?.split('T')[0]||'—'}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+let lfUpdateTargetId = null;
+function openLFUpdate(id) {
+  lfUpdateTargetId = id;
+  const lf = DB.lostFound().find(i=>i.id===id);
+  if (!lf) return;
+  document.getElementById('lf-update-body').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center;padding:14px;background:var(--gray-bg);border-radius:10px;margin-bottom:16px;">
+      <div style="font-size:32px;">${LF_ICONS[lf.cat]||'📦'}</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;">${lf.item}</div>
+        <div style="font-size:12px;color:var(--gray-400);">Kamar ${lf.room} · ${lf.date} · Ditemukan oleh ${lf.staffName}</div>
+        <div style="font-size:12px;color:var(--gray-400);">${lf.desc||''}</div>
+      </div>
+    </div>
+    <div class="form-grid form-2">
+      <div class="field" style="grid-column:span 2;">
+        <label>Nama yang Mengklaim (jika diklaim)</label>
+        <input type="text" id="lf-claimant" placeholder="Nama tamu / pemilik barang..." value="${lf.claimedBy||''}"/>
+      </div>
+      <div class="field" style="grid-column:span 2;">
+        <label>Catatan Update</label>
+        <textarea id="lf-update-note" rows="2" placeholder="Keterangan tambahan...">${lf.note||''}</textarea>
+      </div>
+    </div>`;
+  openModal('modal-lf-update');
+}
+
+function updateLFStatus(newStatus) {
+  if (!lfUpdateTargetId) return;
+  const items = DB.lostFound();
+  const idx   = items.findIndex(i=>i.id===lfUpdateTargetId);
+  if (idx<0) return;
+  items[idx].status    = newStatus;
+  items[idx].updatedBy = currentUser.name;
+  items[idx].note      = document.getElementById('lf-update-note')?.value||'';
+  if (newStatus==='Diklaim') {
+    const claimant = document.getElementById('lf-claimant')?.value.trim();
+    if (!claimant) { alert('Nama yang mengklaim wajib diisi.'); return; }
+    items[idx].claimedBy = claimant;
+    items[idx].claimedAt = new Date().toISOString();
+  }
+  DB.saveLostFound(items);
+  closeModal('modal-lf-update');
+  renderLFLeaderStats(); renderLFLeader();
+}
+
+// ─── MANAGER L&F ──────────────────────────────────────
+function renderLFMgrStats() {
+  const items   = DB.lostFound();
+  const stored  = items.filter(i=>i.status==='Disimpan').length;
+  const claimed = items.filter(i=>i.status==='Diklaim').length;
+  const fo      = items.filter(i=>i.status==='Diserahkan ke FO').length;
+  const highVal = items.filter(i=>i.value==='Tinggi (> Rp 1jt)').length;
+  document.getElementById('lf-mgr-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon" style="background:#FEF9C3;">🔍</div><div class="stat-val mono">${items.length}</div><div class="stat-lbl">Total Barang</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#FEE2E2;">⚠️</div><div class="stat-val mono">${stored}</div><div class="stat-lbl">Masih Disimpan</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#D1FAE5;">✓</div><div class="stat-val mono">${claimed}</div><div class="stat-lbl">Sudah Diklaim</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#EDE9FE;">💎</div><div class="stat-val mono">${highVal}</div><div class="stat-lbl">Nilai Tinggi</div></div>`;
+}
+
+function renderLFReport() {
+  const fHotel  = document.getElementById('lfr-hotel')?.value||'';
+  const fStatus = document.getElementById('lfr-status')?.value||'';
+  const fCat    = document.getElementById('lfr-cat')?.value||'';
+  const search  = document.getElementById('lfr-search')?.value.toLowerCase()||'';
+  let items = DB.lostFound();
+  if (fHotel)  items = items.filter(i=>i.hotel===fHotel);
+  if (fStatus) items = items.filter(i=>i.status===fStatus);
+  if (fCat)    items = items.filter(i=>i.cat===fCat);
+  if (search)  items = items.filter(i=>i.item.toLowerCase().includes(search)||i.room.toLowerCase().includes(search)||i.staffName.toLowerCase().includes(search));
+  items.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const tbody = document.getElementById('lf-report-tbody');
+  if (!items.length) { tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--gray-400);">Tidak ada data.</td></tr>'; return; }
+  tbody.innerHTML = items.map(lf => `<tr>
+    <td class="mono" style="font-size:11px;">${lf.date}</td>
+    <td class="mono" style="font-size:11px;">${lf.refNo}</td>
+    <td><strong>${lf.room}</strong></td>
+    <td style="font-weight:600;">${lf.item}</td>
+    <td>${lf.cat}</td>
+    <td style="font-size:12px;color:var(--gray-600);max-width:140px;">${lf.desc||'—'}</td>
+    <td>${lf.staffName}</td>
+    <td>${lf.hotel}</td>
+    <td style="font-size:12px;">${lf.handover}</td>
+    <td><span class="badge ${LF_STATUS_BADGE[lf.status]||'badge-gray'}">${lf.status}</span></td>
+    <td style="font-size:12px;">${lf.claimedBy||'—'}</td>
+    <td class="mono" style="font-size:11px;">${lf.claimedAt?.split('T')[0]||'—'}</td>
+  </tr>`).join('');
+}
+
+function exportLFReport() {
+  const items = DB.lostFound();
+  const header = ['Tgl Ditemukan','No. Ref','Kamar','Lokasi','Kategori','Nama Barang','Deskripsi','Kondisi','Nilai','Diserahkan ke','Ditemukan Oleh','Unit Hotel','Status','Diklaim Oleh','Tgl Klaim'];
+  const rows = items.map(i=>[i.date,i.refNo,i.room,i.location,i.cat,i.item,i.desc||'',i.condition,i.value,i.handover,i.staffName,i.hotel,i.status,i.claimedBy||'',i.claimedAt?.split('T')[0]||'']);
+  const csv = [header,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`RehatHK_LostFound_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════
+function calcDuration(start, end) {
+  if (!start||!end) return '—';
+  const [sh,sm]=start.split(':').map(Number), [eh,em]=end.split(':').map(Number);
+  let mins = (eh*60+em)-(sh*60+sm);
+  if (mins<0) mins+=1440;
+  const h=Math.floor(mins/60), m=mins%60;
+  return h>0 ? `${h}j ${m}m` : `${m}m`;
+}
+
+function filterByDate(arr, filter) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return arr.filter(item => {
+    if (!item.date && !item.createdAt) return false;
+    const d = new Date(item.date || item.createdAt); d.setHours(0,0,0,0);
+    if (filter==='today')  return d.getTime()===today.getTime();
+    if (filter==='week')   return (today-d)<=6*86400000;
+    if (filter==='month')  return (today-d)<=29*86400000;
+    return true;
+  });
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════════════
+// INIT — auto-login if session exists
+// ═══════════════════════════════════════════════════════
+if (currentUser) {
+  // Re-validate user still exists
+  const u = DB.users().find(u=>u.id===currentUser.id);
+  if (u) { currentUser=u; launchApp(); }
+  else { currentUser=null; localStorage.removeItem('rh_session'); }
+}
+</script>
+</body>
+</html>
