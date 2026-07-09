@@ -1,5 +1,5 @@
 {
-  "baseUrl": "https://api.rehathotelsindonesia.com",
+  "baseUrl": "https://rehathotelsindonesia.com",
   "environment": "production",
   "debug": false
 }

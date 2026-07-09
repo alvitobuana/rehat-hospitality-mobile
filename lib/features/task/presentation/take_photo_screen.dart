@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart'; // untuk openAppSettings
 import 'package:image_picker/image_picker.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/custom_button.dart';
@@ -28,10 +29,161 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
   @override
   void initState() {
     super.initState();
-    // Otomatis buka kamera saat layar ini pertama kali dimuat
+    // Cek camera permission dulu, baru buka kamera
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _openCamera();
+      _checkAndRequestCameraPermission();
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Camera Permission Flow
+  // ---------------------------------------------------------------------------
+
+  /// Mengelola alur izin kamera sebelum membuka kamera.
+  ///
+  /// Flow:
+  /// 1. Jika granted → langsung buka kamera
+  /// 2. Jika belum diminta → tampilkan rationale → minta permission
+  /// 3. Jika denied → tampilkan dialog "Coba Lagi"
+  /// 4. Jika permanently denied → tampilkan dialog "Buka Pengaturan"
+  Future<void> _checkAndRequestCameraPermission() async {
+    if (!mounted) return;
+
+    // image_picker menangani permission sendiri, namun kita tampilkan
+    // rationale dialog terlebih dahulu untuk UX yang lebih baik.
+    // Deteksi status dengan mencoba pick image dan menangkap hasilnya.
+    final bool? shouldProceed = await _showCameraRationaleDialog();
+    if (shouldProceed == true && mounted) {
+      await _openCamera();
+    } else if (mounted) {
+      // User membatalkan dari dialog rationale
+      ref
+          .read(photoUploadControllerProvider(widget.taskId).notifier)
+          .onPickingCancelled();
+    }
+  }
+
+  /// Menampilkan dialog penjelasan sebelum meminta permission kamera.
+  /// Mengembalikan true jika user setuju untuk melanjutkan.
+  Future<bool?> _showCameraRationaleDialog() async {
+    if (!mounted) return null;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          icon: Icon(
+            Icons.camera_alt_rounded,
+            size: 48,
+            color: theme.colorScheme.primary,
+          ),
+          title: const Text(
+            'Izin Kamera Diperlukan',
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'Aplikasi membutuhkan akses kamera untuk mengambil foto bukti penyelesaian tugas. '
+            'Foto ini akan dikirim ke server sebagai verifikasi pekerjaan Anda.',
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Izinkan Kamera'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Menampilkan dialog ketika camera permission ditolak permanen.
+  Future<void> _showCameraPermanentlyDeniedDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          icon: Icon(
+            Icons.no_photography_rounded,
+            size: 48,
+            color: theme.colorScheme.error,
+          ),
+          title: const Text(
+            'Kamera Tidak Bisa Diakses',
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'Izin kamera telah ditolak secara permanen. Buka pengaturan aplikasi '
+            'untuk mengaktifkan izin kamera secara manual.',
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Nanti', style: TextStyle(color: Colors.grey)),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                // Menggunakan geolocator openAppSettings karena sudah tersedia
+                await Geolocator.openAppSettings();
+              },
+              child: const Text('Buka Pengaturan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Menampilkan dialog ketika camera permission ditolak (masih bisa coba lagi).
+  Future<void> _showCameraDeniedDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Icon(
+          Icons.camera_alt_outlined,
+          size: 48,
+          color: Colors.orange,
+        ),
+        title: const Text(
+          'Izin Kamera Ditolak',
+          textAlign: TextAlign.center,
+        ),
+        content: const Text(
+          'Izin kamera diperlukan untuk mengambil foto bukti kerja. '
+          'Silakan coba lagi dan berikan izin kamera.',
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _openCamera();
+            },
+            child: const Text('Coba Lagi'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -64,10 +216,18 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ref
-          .read(photoUploadControllerProvider(widget.taskId).notifier)
-          .onPickingCancelled();
-      _showError('Gagal membuka kamera: $e');
+      // Deteksi apakah error disebabkan permission yang ditolak
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('permanently') || errStr.contains('denied_forever')) {
+        ref.read(photoUploadControllerProvider(widget.taskId).notifier).onPickingCancelled();
+        await _showCameraPermanentlyDeniedDialog();
+      } else if (errStr.contains('denied') || errStr.contains('permission')) {
+        ref.read(photoUploadControllerProvider(widget.taskId).notifier).onPickingCancelled();
+        await _showCameraDeniedDialog();
+      } else {
+        ref.read(photoUploadControllerProvider(widget.taskId).notifier).onPickingCancelled();
+        _showError('Gagal membuka kamera: $e');
+      }
     }
   }
 

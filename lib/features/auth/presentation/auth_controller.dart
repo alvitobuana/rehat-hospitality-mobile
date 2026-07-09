@@ -168,26 +168,61 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  /// Mengevaluasi Izin Lokasi GPS
+  /// Mengevaluasi Izin Lokasi GPS — dipanggil ketika user menekan tombol di GpsPermissionScreen
   Future<void> checkGpsPermission() async {
     state = state.copyWith(status: AuthStatus.authenticating);
     try {
+      // Cek dulu apakah GPS service aktif
       final gpsEnabled = await _locationService.isLocationEnabled();
       if (!gpsEnabled) {
-        throw AppFailure.local('Layanan GPS ponsel Anda tidak aktif. Harap nyalakan GPS.', 'GPS_DISABLED');
+        // GPS mati — tampilkan error dengan code agar UI bisa bedakan
+        state = AuthState(
+          status: AuthStatus.locationPermissionRequired,
+          username: state.username,
+          errorMessage: 'GPS_SERVICE_DISABLED',
+        );
+        return;
       }
 
-      final permissionGranted = await _locationService.requestPermission();
-      if (permissionGranted) {
+      // GPS aktif — cek status permission saat ini
+      final permStatus = await _locationService.checkPermissionStatus();
+
+      if (permStatus == LocationPermissionStatus.permanentlyDenied) {
+        // Ditolak permanen — arahkan ke App Settings
+        state = AuthState(
+          status: AuthStatus.locationPermissionRequired,
+          username: state.username,
+          errorMessage: 'PERMISSION_PERMANENTLY_DENIED',
+        );
+        return;
+      }
+
+      if (permStatus == LocationPermissionStatus.granted) {
+        // Sudah punya permission — lanjut ke dashboard
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          username: state.username,
+        );
+        return;
+      }
+
+      // belum diberikan atau denied — minta permission dialog sistem
+      final granted = await _locationService.requestPermission();
+      if (granted) {
         state = AuthState(
           status: AuthStatus.authenticated,
           username: state.username,
         );
       } else {
+        // Cek sekali lagi apakah sekarang permanently denied
+        final newStatus = await _locationService.checkPermissionStatus();
+        final errCode = newStatus == LocationPermissionStatus.permanentlyDenied
+            ? 'PERMISSION_PERMANENTLY_DENIED'
+            : 'PERMISSION_DENIED';
         state = AuthState(
           status: AuthStatus.locationPermissionRequired,
           username: state.username,
-          errorMessage: 'Aplikasi memerlukan izin GPS untuk absensi.',
+          errorMessage: errCode,
         );
       }
     } on AppFailure catch (e) {
@@ -239,31 +274,31 @@ class AuthController extends StateNotifier<AuthState> {
         return;
       }
 
-      // 2. Validasi Layanan Lokasi & Izin GPS
-      final gpsEnabled = await _locationService.isLocationEnabled();
-      if (!gpsEnabled) {
+      // 2. Cek status permission TANPA memunculkan dialog sistem.
+      //    Dialog sistem hanya dipanggil di GpsPermissionScreen via checkGpsPermission().
+      final permStatus = await _locationService.checkPermissionStatus();
+
+      if (permStatus == LocationPermissionStatus.granted) {
+        // Permission sudah ada — langsung ke dashboard
         state = AuthState(
-          status: AuthStatus.locationPermissionRequired,
+          status: AuthStatus.authenticated,
           username: username,
-          errorMessage: 'GPS tidak aktif.',
         );
         return;
       }
 
-      final permissionGranted = await _locationService.requestPermission();
-      if (!permissionGranted) {
-        state = AuthState(
-          status: AuthStatus.locationPermissionRequired,
-          username: username,
-          errorMessage: 'Izin GPS ditolak.',
-        );
-        return;
-      }
+      // Permission belum ada (denied, permanentlyDenied, serviceDisabled, notDetermined)
+      // Arahkan ke GpsPermissionScreen untuk menampilkan UI rationale yang tepat
+      final errorCode = switch (permStatus) {
+        LocationPermissionStatus.permanentlyDenied => 'PERMISSION_PERMANENTLY_DENIED',
+        LocationPermissionStatus.serviceDisabled => 'GPS_SERVICE_DISABLED',
+        _ => 'PERMISSION_NOT_GRANTED',
+      };
 
-      // Jika seluruh rantai lolos, user diotentikasi penuh
       state = AuthState(
-        status: AuthStatus.authenticated,
+        status: AuthStatus.locationPermissionRequired,
         username: username,
+        errorMessage: errorCode,
       );
     } catch (e) {
       state = AuthState(

@@ -8,21 +8,43 @@ class LocationServiceImpl implements LocationService {
   }
 
   @override
+  Future<LocationPermissionStatus> checkPermissionStatus() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return LocationPermissionStatus.serviceDisabled;
+    }
+
+    final permission = await Geolocator.checkPermission();
+    switch (permission) {
+      case LocationPermission.always:
+      case LocationPermission.whileInUse:
+        return LocationPermissionStatus.granted;
+      case LocationPermission.deniedForever:
+        return LocationPermissionStatus.permanentlyDenied;
+      case LocationPermission.denied:
+        return LocationPermissionStatus.denied;
+      case LocationPermission.unableToDetermine:
+        return LocationPermissionStatus.notDetermined;
+    }
+  }
+
+  @override
   Future<bool> requestPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         return false;
       }
     }
-    
+
     if (permission == LocationPermission.deniedForever) {
       return false;
     }
-    
-    return permission == LocationPermission.whileInUse || permission == LocationPermission.always;
+
+    return permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always;
   }
 
   @override
@@ -30,7 +52,7 @@ class LocationServiceImpl implements LocationService {
     final position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     ).timeout(const Duration(seconds: 10));
-    
+
     return {
       'latitude': position.latitude,
       'longitude': position.longitude,
@@ -50,5 +72,15 @@ class LocationServiceImpl implements LocationService {
       endLatitude,
       endLongitude,
     );
+  }
+
+  @override
+  Future<void> openLocationSettings() async {
+    await Geolocator.openLocationSettings();
+  }
+
+  @override
+  Future<void> openAppSettings() async {
+    await Geolocator.openAppSettings();
   }
 }

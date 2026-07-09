@@ -1,5 +1,5 @@
 {
-  "baseUrl": "http://192.168.18.102/qa_web_rehat",
+  "baseUrl": "https://rehathotelsindonesia.com",
   "environment": "development",
   "debug": true
 }
