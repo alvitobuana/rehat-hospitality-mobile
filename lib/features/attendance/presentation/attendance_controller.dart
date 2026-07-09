@@ -1,0 +1,175 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/device/device_service.dart';
+import '../../../core/exceptions/app_failure.dart';
+import '../../../core/location/location_service.dart';
+import '../../../core/storage/session_manager.dart';
+import '../data/attendance_repository.dart';
+
+enum AttendanceStatus {
+  checkedOut,
+  checkedIn,
+  loading,
+  success,
+  error,
+}
+
+class AttendanceState {
+  final AttendanceStatus status;
+  final String? errorMessage;
+  final String? lastActionMessage;
+
+  const AttendanceState({
+    required this.status,
+    this.errorMessage,
+    this.lastActionMessage,
+  });
+
+  factory AttendanceState.initial() => const AttendanceState(status: AttendanceStatus.checkedOut);
+
+  AttendanceState copyWith({
+    AttendanceStatus? status,
+    String? errorMessage,
+    String? lastActionMessage,
+  }) {
+    return AttendanceState(
+      status: status ?? this.status,
+      errorMessage: errorMessage ?? this.errorMessage,
+      lastActionMessage: lastActionMessage ?? this.lastActionMessage,
+    );
+  }
+}
+
+final attendanceControllerProvider = StateNotifierProvider<AttendanceController, AttendanceState>((ref) {
+  final attendanceRepo = ref.read(attendanceRepositoryProvider);
+  final deviceService = ref.read(deviceServiceProvider);
+  final locationService = ref.read(locationServiceProvider);
+  final sessionManager = ref.read(sessionManagerProvider);
+  return AttendanceController(attendanceRepo, deviceService, locationService, sessionManager);
+});
+
+class AttendanceController extends StateNotifier<AttendanceState> {
+  final AttendanceRepository _attendanceRepository;
+  final DeviceService _deviceService;
+  final LocationService _locationService;
+  final SessionManager _sessionManager;
+
+  AttendanceController(
+    this._attendanceRepository,
+    this._deviceService,
+    this._locationService,
+    this._sessionManager,
+  ) : super(AttendanceState.initial());
+
+  /// Eksekusi Check-In Karyawan (Pengambilan GPS + Device Info ➔ Kirim API)
+  Future<void> checkIn() async {
+    state = state.copyWith(status: AttendanceStatus.loading);
+    try {
+      // 1. Dapatkan user_id dari Secure Storage
+      final userId = await _sessionManager.getUserId();
+      if (userId == null) {
+        throw AppFailure.local('Sesi user_id tidak ditemukan. Silakan login kembali.', 'SESSION_INVALID');
+      }
+
+      // 2. Dapatkan parameter hardware perangkat
+      final device = await _deviceService.getDeviceInfo();
+
+      // 3. Cek status keaktifan GPS
+      final gpsEnabled = await _locationService.isLocationEnabled();
+      if (!gpsEnabled) {
+        throw AppFailure.local('GPS Anda tidak aktif. Mohon hidupkan GPS ponsel.', 'GPS_OFF');
+      }
+
+      // 4. Ambil koordinat GPS real-time
+      final coords = await _locationService.getCurrentLocation();
+      final lat = coords['latitude']!;
+      final lng = coords['longitude']!;
+
+      // 5. Kirim data absensi ke server
+      final success = await _attendanceRepository.checkIn(
+        userId: userId,
+        latitude: lat,
+        longitude: lng,
+        deviceId: device.deviceId,
+      );
+
+      if (success) {
+        state = state.copyWith(
+          status: AttendanceStatus.success,
+          lastActionMessage: 'Check-In Berhasil!\nSelamat Bekerja.',
+        );
+        // Kembali ke status CheckedIn setelah visual sukses ditampilkan
+        await Future.delayed(const Duration(seconds: 2));
+        state = state.copyWith(status: AttendanceStatus.checkedIn);
+      } else {
+        throw AppFailure.local('Check-In ditolak oleh server.');
+      }
+    } on AppFailure catch (e) {
+      state = state.copyWith(status: AttendanceStatus.error, errorMessage: e.message);
+      // Revert ke status awal setelah memunculkan pesan error
+      await Future.delayed(const Duration(seconds: 2));
+      state = state.copyWith(status: AttendanceStatus.checkedOut);
+    } catch (e) {
+      state = state.copyWith(status: AttendanceStatus.error, errorMessage: 'Terjadi kesalahan: $e');
+      await Future.delayed(const Duration(seconds: 2));
+      state = state.copyWith(status: AttendanceStatus.checkedOut);
+    }
+  }
+
+  /// Eksekusi Check-Out Karyawan (Pengambilan GPS + Device Info ➔ Kirim API)
+  Future<void> checkOut() async {
+    state = state.copyWith(status: AttendanceStatus.loading);
+    try {
+      // 1. Dapatkan user_id dari Secure Storage
+      final userId = await _sessionManager.getUserId();
+      if (userId == null) {
+        throw AppFailure.local('Sesi user_id tidak ditemukan. Silakan login kembali.', 'SESSION_INVALID');
+      }
+
+      // 2. Dapatkan parameter hardware
+      final device = await _deviceService.getDeviceInfo();
+
+      // 3. Cek keaktifan GPS
+      final gpsEnabled = await _locationService.isLocationEnabled();
+      if (!gpsEnabled) {
+        throw AppFailure.local('GPS Anda tidak aktif. Mohon hidupkan GPS ponsel.', 'GPS_OFF');
+      }
+
+      // 4. Ambil koordinat GPS
+      final coords = await _locationService.getCurrentLocation();
+      final lat = coords['latitude']!;
+      final lng = coords['longitude']!;
+
+      // 5. Kirim ke server
+      final success = await _attendanceRepository.checkOut(
+        userId: userId,
+        latitude: lat,
+        longitude: lng,
+        deviceId: device.deviceId,
+      );
+
+      if (success) {
+        state = state.copyWith(
+          status: AttendanceStatus.success,
+          lastActionMessage: 'Check-Out Berhasil!\nTerima Kasih Atas Kerja Keras Anda.',
+        );
+        await Future.delayed(const Duration(seconds: 2));
+        state = state.copyWith(status: AttendanceStatus.checkedOut);
+      } else {
+        throw AppFailure.local('Check-Out ditolak oleh server.');
+      }
+    } on AppFailure catch (e) {
+      state = state.copyWith(status: AttendanceStatus.error, errorMessage: e.message);
+      await Future.delayed(const Duration(seconds: 2));
+      state = state.copyWith(status: AttendanceStatus.checkedIn);
+    } catch (e) {
+      state = state.copyWith(status: AttendanceStatus.error, errorMessage: 'Terjadi kesalahan: $e');
+      await Future.delayed(const Duration(seconds: 2));
+      state = state.copyWith(status: AttendanceStatus.checkedIn);
+    }
+  }
+
+  /// Reset manual error status
+  void clearError() {
+    state = state.copyWith(errorMessage: null);
+  }
+}

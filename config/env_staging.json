@@ -1,0 +1,5 @@
+{
+  "baseUrl": "https://staging-api.rehathotels.com",
+  "environment": "staging",
+  "debug": true
+}

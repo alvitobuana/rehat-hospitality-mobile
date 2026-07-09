@@ -1,0 +1,185 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/custom_button.dart';
+import '../../../shared/widgets/loading_overlay.dart';
+import '../../../shared/widgets/state_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
+import '../../auth/presentation/auth_controller.dart';
+import 'attendance_controller.dart';
+
+class DashboardPlaceholderScreen extends ConsumerWidget {
+  const DashboardPlaceholderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authControllerProvider);
+    final attendanceState = ref.watch(attendanceControllerProvider);
+    final theme = Theme.of(context);
+
+    // Listens to logout action and redirect
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (next.status == AuthStatus.unauthenticated) {
+        context.go('/login');
+      }
+    });
+
+    // Listens to attendance error SnackBar
+    ref.listen<AttendanceState>(attendanceControllerProvider, (previous, next) {
+      if (next.status == AttendanceStatus.error && next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: theme.colorScheme.error,
+          ),
+        );
+        ref.read(attendanceControllerProvider.notifier).clearError();
+      }
+    });
+
+    final bool isAuthenticating = authState.status == AuthStatus.authenticating;
+    final bool isAttendanceLoading = attendanceState.status == AttendanceStatus.loading;
+    final bool isActionSuccess = attendanceState.status == AttendanceStatus.success;
+
+    return LoadingOverlay(
+      isLoading: isAuthenticating || isAttendanceLoading,
+      message: isAuthenticating ? 'Mengeluarkan sesi...' : 'Mencocokkan koordinat GPS...',
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Rehat Housekeeping'),
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout_rounded),
+              tooltip: 'Keluar Akun',
+              onPressed: () {
+                ref.read(authControllerProvider.notifier).logout();
+              },
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // User Profile Box
+                  AppCard(
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: theme.primaryColor.withOpacity(0.12),
+                          child: Icon(Icons.person, size: 36, color: theme.primaryColor),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                authState.username ?? 'Staf Housekeeping',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Housekeeping Staff',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Attendance Controller Box
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Sesi Absensi Kehadiran',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('Status Saat Ini: '),
+                            const SizedBox(width: 8),
+                            StatusBadge.fromStatusString(
+                              attendanceState.status == AttendanceStatus.checkedIn
+                                  ? 'clean' // Maps to green "Clean"
+                                  : 'dirty', // Maps to red "Dirty" (Checked Out)
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        
+                        if (attendanceState.status == AttendanceStatus.checkedOut ||
+                            attendanceState.status == AttendanceStatus.loading ||
+                            attendanceState.status == AttendanceStatus.error) ...[
+                          CustomButton(
+                            text: 'CHECK IN (MASUK KERJA)',
+                            backgroundColor: Colors.green,
+                            icon: const Icon(Icons.login_rounded, color: Colors.white),
+                            onPressed: () {
+                              ref.read(attendanceControllerProvider.notifier).checkIn();
+                            },
+                          ),
+                        ] else if (attendanceState.status == AttendanceStatus.checkedIn) ...[
+                          CustomButton(
+                            text: 'CHECK OUT (PULANG KERJA)',
+                            backgroundColor: Colors.red,
+                            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                            onPressed: () {
+                              ref.read(attendanceControllerProvider.notifier).checkOut();
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  
+                  const Spacer(),
+                  // Stakeholder simple footer note
+                  const Text(
+                    'Rehat Hospitality • Simple, Stable, Fast',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            
+            // Animasi overlay sukses absensi
+            if (isActionSuccess)
+              Container(
+                color: Colors.black.withOpacity(0.4),
+                alignment: Alignment.center,
+                child: SuccessStateView(
+                  title: 'Absensi Berhasil',
+                  message: attendanceState.lastActionMessage ?? 'Data absensi GPS terkirim.',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

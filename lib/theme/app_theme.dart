@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+/// Tema transisi sederhana tanpa Google Fonts untuk layar prototipe lama.
 class AppTheme {
-  static const Color primaryColor = Color(0xFF3D6FCB);
+  static const Color primaryColor = Color(0xFF1A73E8);
   static const Color secondaryColor = Color(0xFF5A6478);
   static const Color backgroundColor = Color(0xFFF5F7FA);
   
-  static const double cardRadius = 16.0;
-  static const double buttonRadius = 12.0;
+  static const double cardRadius = 8.0;
+  static const double buttonRadius = 8.0;
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -16,42 +16,36 @@ class AppTheme {
         seedColor: primaryColor,
         primary: primaryColor,
         secondary: secondaryColor,
-        background: backgroundColor,
         surface: Colors.white,
       ),
       scaffoldBackgroundColor: backgroundColor,
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 1,
-        shadowColor: Colors.black.withOpacity(0.05),
-        iconTheme: const IconThemeData(color: Color(0xFF1A2B4A)),
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        iconTheme: IconThemeData(color: Color(0xFF1A2B4A)),
+        titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF1A2B4A),
+          color: Color(0xFF1A2B4A),
         ),
       ),
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(
-        const TextTheme(
-          displayLarge: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1A2B4A)),
-          displayMedium: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1A2B4A)),
-          displaySmall: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
-          headlineLarge: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
-          headlineMedium: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
-          headlineSmall: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A2B4A)),
-          titleLarge: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
-          titleMedium: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A2B4A)),
-          titleSmall: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A2B4A)),
-          bodyLarge: TextStyle(color: Color(0xFF1A2B4A)),
-          bodyMedium: TextStyle(color: Color(0xFF5A6478)),
-          bodySmall: TextStyle(color: Color(0xFF9AA3B2)),
-        ),
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1A2B4A)),
+        displayMedium: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1A2B4A)),
+        displaySmall: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
+        headlineLarge: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
+        headlineMedium: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
+        headlineSmall: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A2B4A)),
+        titleLarge: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A2B4A)),
+        titleMedium: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A2B4A)),
+        titleSmall: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A2B4A)),
+        bodyLarge: TextStyle(color: Color(0xFF1A2B4A)),
+        bodyMedium: TextStyle(color: Color(0xFF5A6478)),
+        bodySmall: TextStyle(color: Color(0xFF9AA3B2)),
       ),
       cardTheme: CardTheme(
         color: Colors.white,
-        elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.04),
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(cardRadius),
           side: const BorderSide(color: Color(0xFFE4E8F0), width: 1),
@@ -89,7 +83,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(buttonRadius),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -103,7 +97,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(buttonRadius),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -112,7 +106,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primaryColor,
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -121,24 +115,23 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
         elevation: 8,
-        shadowColor: Colors.black.withOpacity(0.08),
         indicatorColor: primaryColor.withOpacity(0.12),
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
-            return GoogleFonts.plusJakartaSans(
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: primaryColor,
             );
           }
-          return GoogleFonts.plusJakartaSans(
+          return const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF5A6478),
+            color: Color(0xFF5A6478),
           );
         }),
-        iconTheme: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: primaryColor, size: 24);
           }
           return const IconThemeData(color: Color(0xFF5A6478), size: 24);

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/mock_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/reusable_widgets.dart';
@@ -167,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         alignment: Alignment.center,
                         child: Text(
                           'RH',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
