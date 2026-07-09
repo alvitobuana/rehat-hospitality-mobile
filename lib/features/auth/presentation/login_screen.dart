@@ -75,19 +75,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Brand Logo Simple flat
+                    // Brand Logo
                     Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: theme.primaryColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.cleaning_services_rounded,
-                          size: 48,
-                          color: Colors.white,
-                        ),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        height: 54,
+                        fit: BoxFit.contain,
                       ),
                     ),
                     const SizedBox(height: 24),

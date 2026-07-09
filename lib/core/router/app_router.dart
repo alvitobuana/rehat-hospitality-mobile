@@ -100,8 +100,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       }
     });
 
-    final theme = Theme.of(context);
-
     return Scaffold(
       body: Center(
         child: Column(
@@ -109,16 +107,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 32),
-            Icon(
-              Icons.cleaning_services_rounded,
-              size: 56,
-              color: theme.primaryColor,
+            Image.asset(
+              'assets/logo.png',
+              height: 60,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Rehat Housekeeping',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+            const SizedBox(height: 24),
             const SizedBox(height: 6),
             const Text(
               'Menghubungkan ke server hotel...',
