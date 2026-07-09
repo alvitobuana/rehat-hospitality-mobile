@@ -108,7 +108,10 @@ class AuthController extends StateNotifier<AuthState> {
       final role = response['role'] as String? ?? 'staff';
       final level = response['level'] as String? ?? 'Non Admin';
 
-      final phpSessionId = await _sessionManager.getPhpSessionId() ?? '';
+      // Ambil phpSessionId dari response Map (yang diekstrak sinkron di repositori)
+      // untuk menghindari race condition penulisan async secure storage
+      final phpSessionId = response['phpSessionId'] as String? ?? 
+          await _sessionManager.getPhpSessionId() ?? '';
       
       if (userId != null) {
         await _sessionManager.saveSession(

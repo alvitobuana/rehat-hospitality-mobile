@@ -32,6 +32,44 @@ class AuthRepository {
       final data = response.data;
       if (data is Map<String, dynamic>) {
         if (data['status'] == 'success') {
+          // Ekstraksi PHPSESSID secara langsung dari response untuk menghindari race condition async
+          String? phpSessionId;
+          
+          // Cara 1: Baca dari header set-cookie
+          final setCookies = response.headers['set-cookie'];
+          if (setCookies != null && setCookies.isNotEmpty) {
+            for (var cookie in setCookies) {
+              if (cookie.contains('PHPSESSID=')) {
+                final match = RegExp(r'PHPSESSID=([^;]+)').firstMatch(cookie);
+                if (match != null) {
+                  phpSessionId = match.group(1);
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Cara 2: Fallback ke cookie jar milik DioClient
+          if (phpSessionId == null) {
+            try {
+              final cookies = await _dioClient.cookieJar.loadForRequest(
+                Uri.parse(response.requestOptions.baseUrl),
+              );
+              for (var cookie in cookies) {
+                if (cookie.name == 'PHPSESSID') {
+                  phpSessionId = cookie.value;
+                  break;
+                }
+              }
+            } catch (_) {
+              // Abaikan jika pemuatan dari cookie jar gagal
+            }
+          }
+          
+          if (phpSessionId != null && phpSessionId.isNotEmpty) {
+            data['phpSessionId'] = phpSessionId;
+          }
+          
           return data;
         } else {
           throw AppFailure.local(data['message'] ?? 'Login gagal.', 'LOGIN_FAILED');
