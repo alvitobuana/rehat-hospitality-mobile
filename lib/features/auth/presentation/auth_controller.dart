@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/device/device_service.dart';
 import '../../../core/exceptions/app_failure.dart';
 import '../../../core/location/location_service.dart';
@@ -326,6 +327,8 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(status: AuthStatus.authenticating);
     try {
       final device = await _deviceService.getDeviceInfo();
+      final packageInfo = await PackageInfo.fromPlatform();
+      final appVersion = packageInfo.version;
       
       await _authRepository.register(
         fullName: fullName,
@@ -339,7 +342,7 @@ class AuthController extends StateNotifier<AuthState> {
         deviceId: device.deviceId,
         deviceModel: device.deviceModel,
         osVersion: device.osVersion,
-        appVersion: device.appVersion,
+        appVersion: appVersion,
       );
       
       state = state.copyWith(status: AuthStatus.unauthenticated);
