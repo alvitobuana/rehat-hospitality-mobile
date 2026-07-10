@@ -311,4 +311,67 @@ class AuthController extends StateNotifier<AuthState> {
       );
     }
   }
+
+  /// Melakukan registrasi staf baru
+  Future<bool> register({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String password,
+    required String hotelId,
+    required String department,
+    required String position,
+    String? employeeId,
+  }) async {
+    state = state.copyWith(status: AuthStatus.authenticating);
+    try {
+      final device = await _deviceService.getDeviceInfo();
+      
+      await _authRepository.register(
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        password: password,
+        hotelId: hotelId,
+        department: department,
+        position: position,
+        employeeId: employeeId,
+        deviceId: device.deviceId,
+        deviceModel: device.deviceModel,
+        osVersion: device.osVersion,
+        appVersion: device.appVersion,
+      );
+      
+      state = state.copyWith(status: AuthStatus.unauthenticated);
+      return true;
+    } on AppFailure catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: 'Registrasi gagal: $e',
+      );
+      return false;
+    }
+  }
+
+  /// Memeriksa status registrasi staf
+  Future<Map<String, dynamic>> checkRegistrationStatus(String email) async {
+    try {
+      final res = await _authRepository.checkRegistrationStatus(email);
+      return {
+        'status': res['registration_status'] as String? ?? 'PENDING',
+        'reason': res['rejection_reason'] as String?,
+      };
+    } catch (e) {
+      return {
+        'status': 'PENDING',
+        'reason': 'Gagal memeriksa status: $e',
+      };
+    }
+  }
 }

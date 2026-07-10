@@ -115,4 +115,79 @@ class AuthRepository {
       await _dioClient.clearCookies();
     }
   }
+
+  /// Melakukan registrasi staf housekeeping baru
+  Future<Map<String, dynamic>> register({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String password,
+    required String hotelId,
+    required String department,
+    required String position,
+    String? employeeId,
+    required String deviceId,
+    required String deviceModel,
+    required String osVersion,
+    required String appVersion,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        AppConstants.pathRegister,
+        data: {
+          'full_name': fullName,
+          'email': email,
+          'phone': phone,
+          'password': password,
+          'hotel_id': hotelId,
+          'department': department,
+          'position': position,
+          'employee_id': employeeId,
+          'device_id': deviceId,
+          'device_model': deviceModel,
+          'os_version': osVersion,
+          'app_version': appVersion,
+        },
+        options: Options(
+          contentType: Headers.jsonContentType,
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['status'] == 'success') {
+          return data;
+        } else {
+          throw AppFailure.local(data['message'] ?? 'Registrasi gagal.', 'REGISTRATION_FAILED');
+        }
+      }
+      throw AppFailure.local('Respon server tidak valid.', 'INVALID_RESPONSE');
+    } on AppFailure {
+      rethrow;
+    } catch (e) {
+      throw AppFailure.local('Terjadi kesalahan koneksi saat registrasi: $e');
+    }
+  }
+
+  /// Memeriksa status registrasi berdasarkan email
+  Future<Map<String, dynamic>> checkRegistrationStatus(String email) async {
+    try {
+      final response = await _dioClient.get(
+        AppConstants.pathRegistrationStatus,
+        queryParameters: {
+          'email': email,
+        },
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['status'] == 'success') {
+        return data;
+      }
+      throw AppFailure.local(data is Map ? data['message'] ?? 'Gagal memeriksa status.' : 'Gagal memeriksa status.', 'STATUS_CHECK_FAILED');
+    } on AppFailure {
+      rethrow;
+    } catch (e) {
+      throw AppFailure.local('Terjadi kesalahan koneksi saat memeriksa status registrasi: $e');
+    }
+  }
 }

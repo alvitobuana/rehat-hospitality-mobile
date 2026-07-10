@@ -6,6 +6,8 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/device_binding_screen.dart';
 import '../../features/auth/presentation/gps_permission_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/register_screen.dart';
+import '../../features/auth/presentation/registration_success_screen.dart';
 import '../../features/task/presentation/take_photo_screen.dart';
 import '../../features/task/presentation/task_detail_screen.dart';
 
@@ -24,6 +26,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        name: 'register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/registration-success',
+        name: 'registration-success',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return RegistrationSuccessScreen(email: email);
+        },
       ),
       GoRoute(
         path: '/device-binding',

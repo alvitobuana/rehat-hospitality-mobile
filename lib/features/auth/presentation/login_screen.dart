@@ -142,6 +142,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             isLoading: isLoading,
                             onPressed: _onLoginPressed,
                           ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => context.push('/register'),
+                              child: Text(
+                                'Belum punya akun? Daftar sekarang',
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
