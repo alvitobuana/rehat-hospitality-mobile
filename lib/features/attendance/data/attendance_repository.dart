@@ -57,8 +57,8 @@ class AttendanceRepository {
   /// respon 422 INCOMPLETE_TASKS.
   Future<bool> checkOut({
     required int userId,
-    required double latitude,
-    required double longitude,
+    double? latitude,
+    double? longitude,
     required String deviceId,
     bool confirmIncomplete = false,
   }) async {
@@ -114,5 +114,19 @@ class AttendanceRepository {
     } catch (e) {
       throw AppFailure.local('Gagal mengirim data Check-Out: $e');
     }
+  }
+
+  /// Mengambil waktu server (WIB) terkini
+  Future<String?> getServerTime() async {
+    try {
+      final response = await _dioClient.get('/Housekeeping/api_server_time.php');
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['success'] == true) {
+        return data['server_time'] as String?;
+      }
+    } catch (e) {
+      _logger.e('Gagal mendapatkan waktu server: $e');
+    }
+    return null;
   }
 }

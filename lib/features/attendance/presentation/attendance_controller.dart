@@ -135,18 +135,22 @@ class AttendanceController extends StateNotifier<AttendanceState> {
       // 2. Dapatkan parameter hardware
       final device = await _deviceService.getDeviceInfo();
 
-      // 3. Cek keaktifan GPS
-      final gpsEnabled = await _locationService.isLocationEnabled();
-      if (!gpsEnabled) {
-        throw AppFailure.local('GPS Anda tidak aktif. Mohon hidupkan GPS ponsel.', 'GPS_OFF');
+      // 3. Ambil koordinat GPS (opsional untuk Check Out)
+      double? lat;
+      double? lng;
+      try {
+        final gpsEnabled = await _locationService.isLocationEnabled();
+        if (gpsEnabled) {
+          final coords = await _locationService.getCurrentLocation();
+          lat = coords['latitude'];
+          lng = coords['longitude'];
+        }
+      } catch (e) {
+        // Lokasi gagal diambil, biarkan lat/lng bernilai null dan jangan lempar exception
+        print('Gagal mengambil lokasi GPS saat Check-Out: $e. Melanjutkan Check-Out tanpa koordinat.');
       }
 
-      // 4. Ambil koordinat GPS
-      final coords = await _locationService.getCurrentLocation();
-      final lat = coords['latitude']!;
-      final lng = coords['longitude']!;
-
-      // 5. Kirim ke server
+      // 4. Kirim ke server
       final success = await _attendanceRepository.checkOut(
         userId: userId,
         latitude: lat,

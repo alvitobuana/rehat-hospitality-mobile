@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import '../../../shared/widgets/state_widgets.dart';
 import '../../../shared/widgets/task_card.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../task/presentation/task_list_controller.dart';
+import '../data/attendance_repository.dart';
 import 'attendance_controller.dart';
 import 'dashboard_controller.dart';
 
@@ -24,6 +26,10 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  Timer? _checkoutAlertTimer;
+  Duration? _serverTimeOffset;
+  String? _lastAlertDateStr;
+
   /// Listener yang dipanggil saat DioClient mendeteksi HTTP 401/403.
   /// Memicu logout otomatis dan redirect ke halaman Login.
   void _onSessionExpired() {
@@ -35,17 +41,127 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  Future<void> _syncServerTimeOffset() async {
+    try {
+      final startTime = DateTime.now();
+      final serverTimeStr = await ref.read(attendanceRepositoryProvider).getServerTime();
+      if (serverTimeStr != null) {
+        final endTime = DateTime.now();
+        final latency = endTime.difference(startTime) ~/ 2;
+        final serverTime = DateTime.parse(serverTimeStr).add(latency);
+        if (mounted) {
+          setState(() {
+            _serverTimeOffset = serverTime.difference(DateTime.now());
+          });
+        }
+      }
+    } catch (e) {
+      print('Gagal sinkronisasi waktu server: $e');
+    }
+  }
+
+  DateTime getEstimateServerTime() {
+    final now = DateTime.now();
+    if (_serverTimeOffset == null) return now;
+    return now.add(_serverTimeOffset!);
+  }
+
+  void _startCheckoutAlertTimer() {
+    _checkoutAlertTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      final attendanceState = ref.read(attendanceControllerProvider);
+      if (attendanceState.status != AttendanceStatus.checkedIn) {
+        return;
+      }
+      
+      final serverTime = getEstimateServerTime();
+      final dateStr = '${serverTime.year}-${serverTime.month}-${serverTime.day}';
+      
+      // Pukul 17:45 WIB
+      if (serverTime.hour == 17 && serverTime.minute >= 45) {
+        if (_lastAlertDateStr != dateStr && mounted) {
+          _lastAlertDateStr = dateStr;
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Jam kerja akan berakhir dalam 15 menit. Jangan lupa melakukan Check Out.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: Colors.amber,
+              duration: Duration(seconds: 6),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  Widget _buildCheckoutWarningBanner() {
+    final serverTime = getEstimateServerTime();
+    final isAlertWindow = serverTime.hour == 17 && serverTime.minute >= 45;
+    final attendanceState = ref.watch(attendanceControllerProvider);
+    final isCheckedIn = attendanceState.status == AttendanceStatus.checkedIn;
+    
+    if (!isCheckedIn || !isAlertWindow) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        border: Border.all(color: Colors.amber),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Mengingatkan Absensi',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Jam kerja akan berakhir dalam 15 menit. Jangan lupa melakukan Check Out.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.black.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     // Daftarkan listener ke ValueNotifier global
     sessionExpiredNotifier.addListener(_onSessionExpired);
+    // Sinkronisasi waktu server
+    _syncServerTimeOffset();
+    // Jalankan timer notifikasi jam kerja berakhir
+    _startCheckoutAlertTimer();
   }
 
   @override
   void dispose() {
     // Cabut listener agar tidak memory leak
     sessionExpiredNotifier.removeListener(_onSessionExpired);
+    _checkoutAlertTimer?.cancel();
     super.dispose();
   }
 
@@ -176,6 +292,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               RefreshIndicator(
                 onRefresh: () async {
                   ref.invalidate(sessionDataProvider);
+                  await _syncServerTimeOffset();
                   // BUG 2 FIX: Refresh task list bersamaan agar Tugas Terdekat sinkron
                   await Future.wait([
                     ref.read(dashboardControllerProvider.notifier).refreshSummary(),
@@ -234,6 +351,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
+
+                      _buildCheckoutWarningBanner(),
 
                       // Widget Absensi GPS Reusable
                       AttendanceCard(
