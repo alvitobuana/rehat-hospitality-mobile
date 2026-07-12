@@ -40,16 +40,28 @@ class AttendanceRepository {
         if (data['success'] == true) {
           return true;
         } else {
-          throw AppFailure.local(data['message'] ?? 'Check-In ditolak.', 'CHECKIN_REJECTED');
+          throw AppFailure.local(data['message'] ?? 'Check-In ditolak.', data['code'] ?? 'CHECKIN_REJECTED');
         }
       }
       throw AppFailure.local('Format respon server tidak valid.', 'INVALID_RESPONSE');
     } on AppFailure {
       rethrow;
+    } on DioException catch (e) {
+      // Baca pesan dari response body HTTP 400/403 dll
+      final res = e.response;
+      if (res != null && res.data is Map<String, dynamic>) {
+        final resData = res.data as Map<String, dynamic>;
+        throw AppFailure.local(
+          resData['message'] ?? 'Check-In ditolak oleh server.',
+          resData['code']    ?? 'CHECKIN_REJECTED',
+        );
+      }
+      throw AppFailure.local('Kesalahan jaringan: ${e.message}');
     } catch (e) {
       throw AppFailure.local('Gagal mengirim data Check-In: $e');
     }
   }
+
 
   /// Mengirim data verifikasi Check Out lokasi staf ke server
   ///
