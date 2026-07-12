@@ -7,6 +7,7 @@ import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../data/task_detail.dart';
 import 'task_detail_controller.dart';
+import '../../attendance/presentation/attendance_controller.dart';
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
   final int taskId;
@@ -81,6 +82,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final taskDetailAsync = ref.watch(taskDetailProvider(widget.taskId));
+    final attendanceState = ref.watch(attendanceControllerProvider);
+    final isAttendanceActive = attendanceState.status == AttendanceStatus.checkedIn;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -93,9 +96,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       ),
       body: taskDetailAsync.when(
         data: (TaskDetail detail) {
-          final isPending = detail.status == 'Pending';
+          final isPending    = detail.status == 'Pending';
           final isInProgress = detail.status == 'In Progress';
-          final isCompleted = detail.status == 'Completed';
+          final isCompleted  = detail.status == 'Completed';
+
+          // Sprint 7.1: Checklist Gate
+          final checklistComplete = detail.isChecklistComplete;
+          final doneCount         = detail.checklistDoneCount;
+          final totalCount        = detail.checklistTotalCount;
+          final hasChecklist      = totalCount > 0;
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -109,6 +118,35 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Sprint 7.3: Attendance Access Control notice banner
+                  if (!isAttendanceActive) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.lock_outline_rounded, size: 20, color: Colors.red.shade700),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Akses Terkunci. Anda harus melakukan Check-In absensi terlebih dahulu untuk mengelola tugas.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.red.shade800,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   // Status Info
                   AppCard(
                     child: Column(
@@ -125,7 +163,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Flat visual Step Progress Indicator
+                        // Step Progress Indicator
                         Row(
                           children: [
                             _buildStep(context, label: 'Antrean', isActive: true, isDone: isInProgress || isCompleted),
@@ -165,8 +203,17 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     ),
                   ),
 
-                  // Checklist Box
-                  const SectionHeader(title: 'Item Checklist Kamar'),
+                  // --------------------------------------------------------
+                  // Checklist Box — Sprint 7.1: badge counter & gate notice
+                  // --------------------------------------------------------
+                  _buildChecklistHeader(
+                    context,
+                    hasChecklist: hasChecklist,
+                    doneCount: doneCount,
+                    totalCount: totalCount,
+                    isComplete: checklistComplete,
+                    isInProgress: isInProgress,
+                  ),
                   AppCard(
                     child: detail.checklist.isEmpty
                         ? const Padding(
@@ -177,40 +224,78 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             ),
                           )
                         : Column(
-                            children: detail.checklist.map((item) {
-                              return CheckboxListTile(
-                                title: Text(item.itemName, style: const TextStyle(fontSize: 14)),
-                                value: item.isChecked,
-                                // Read-only saat tugas Selesai atau sedang memproses
-                                onChanged: isCompleted || _isUpdating
-                                    ? null
-                                    : (bool? newValue) {
-                                        if (newValue != null) {
-                                          _onChecklistToggled(item.id, newValue);
-                                        }
-                                      },
-                                controlAffinity: ListTileControlAffinity.leading,
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              );
-                            }).toList(),
+                            children: [
+                              // Checklist items
+                              ...detail.checklist.map((item) {
+                                return CheckboxListTile(
+                                  title: Text(item.itemName, style: const TextStyle(fontSize: 14)),
+                                  value: item.isChecked,
+                                  // Read-only saat tugas Selesai, sedang memproses, atau absensi tidak aktif
+                                  onChanged: isCompleted || _isUpdating || !isAttendanceActive
+                                      ? null
+                                      : (bool? newValue) {
+                                          if (newValue != null) {
+                                            _onChecklistToggled(item.id, newValue);
+                                          }
+                                        },
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  activeColor: Colors.green.shade700,
+                                );
+                              }),
+
+                              // Sprint 7.1: Gate warning notice saat In Progress & belum selesai
+                              if (isInProgress && hasChecklist && !checklistComplete) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.amber.shade300),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded,
+                                          size: 18, color: Colors.amber.shade700),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Selesaikan semua item checklist ($doneCount/$totalCount) '
+                                          'sebelum menyelesaikan tugas.',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.amber.shade800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                   ),
                   const SizedBox(height: 16),
 
+                  // --------------------------------------------------------
                   // Action Buttons
+                  // --------------------------------------------------------
                   if (isPending)
                     CustomButton(
                       text: _isUpdating ? 'Memproses...' : 'MULAI KELOLA SEKARANG',
-                      onPressed: _isUpdating ? null : () => _onUpdateStatus('In Progress'),
+                      backgroundColor: !isAttendanceActive ? Colors.grey.shade400 : null,
+                      onPressed: _isUpdating || !isAttendanceActive ? null : () => _onUpdateStatus('In Progress'),
                     )
                   else if (isInProgress)
-                    CustomButton(
-                      text: 'AMBIL FOTO & SELESAIKAN',
-                      backgroundColor: Colors.green.shade700,
-                      icon: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
-                      // Navigasi ke halaman upload foto; status Completed di-set setelah foto berhasil diunggah
-                      onPressed: _isUpdating ? null : () => context.push('/take-photo/${widget.taskId}'),
+                    _buildCompleteButton(
+                      context,
+                      checklistComplete: checklistComplete,
+                      hasChecklist: hasChecklist,
+                      doneCount: doneCount,
+                      totalCount: totalCount,
+                      isAttendanceActive: isAttendanceActive,
                     )
                   else if (isCompleted)
                     const CustomButton(
@@ -270,6 +355,128 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Sprint 7.1: Checklist Section Header dengan badge counter
+  // ---------------------------------------------------------------------------
+
+  Widget _buildChecklistHeader(
+    BuildContext context, {
+    required bool hasChecklist,
+    required int doneCount,
+    required int totalCount,
+    required bool isComplete,
+    required bool isInProgress,
+  }) {
+    if (!hasChecklist) {
+      return const SectionHeader(title: 'Item Checklist Kamar');
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Item Checklist Kamar',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+          ),
+          // Badge counter
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: isComplete
+                  ? Colors.green.shade100
+                  : Colors.orange.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isComplete ? Icons.check_circle_rounded : Icons.pending_outlined,
+                  size: 14,
+                  color: isComplete ? Colors.green.shade700 : Colors.orange.shade800,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$doneCount/$totalCount selesai',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isComplete ? Colors.green.shade700 : Colors.orange.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sprint 7.1: Tombol Selesaikan dengan checklist gate
+  // ---------------------------------------------------------------------------
+
+  Widget _buildCompleteButton(
+    BuildContext context, {
+    required bool checklistComplete,
+    required bool hasChecklist,
+    required int doneCount,
+    required int totalCount,
+    required bool isAttendanceActive,
+  }) {
+    // Gate: disabled jika checklist belum selesai semua atau absensi tidak aktif
+    final isBlocked = (hasChecklist && !checklistComplete) || !isAttendanceActive;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CustomButton(
+          text: 'AMBIL FOTO & SELESAIKAN',
+          backgroundColor: isBlocked ? Colors.grey.shade400 : Colors.green.shade700,
+          icon: Icon(
+            isBlocked ? Icons.lock_outline_rounded : Icons.camera_alt_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
+          onPressed: isBlocked || _isUpdating
+              ? null
+              : () => context.push('/take-photo/${widget.taskId}'),
+        ),
+
+        // Pesan alasan disabled
+        if (isBlocked) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.info_outline_rounded, size: 14, color: Colors.grey[500]),
+              const SizedBox(width: 6),
+              Text(
+                !isAttendanceActive
+                    ? 'Check-In absensi diperlukan untuk mengelola tugas.'
+                    : 'Selesaikan checklist ($doneCount/$totalCount) untuk melanjutkan.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
   Widget _buildStep(
     BuildContext context, {
     required String label,
@@ -328,9 +535,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.bold)),
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       ],
     );
   }

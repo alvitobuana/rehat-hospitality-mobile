@@ -11,17 +11,20 @@ enum AttendanceStatus {
   loading,
   success,
   error,
+  incompleteTasksWarning, // Sprint 7.3: Warning untuk check-out dengan task belum selesai
 }
 
 class AttendanceState {
   final AttendanceStatus status;
   final String? errorMessage;
   final String? lastActionMessage;
+  final List<String> incompleteRooms; // Sprint 7.3: Daftar kamar yang belum selesai
 
   const AttendanceState({
     required this.status,
     this.errorMessage,
     this.lastActionMessage,
+    this.incompleteRooms = const [],
   });
 
   factory AttendanceState.initial() => const AttendanceState(status: AttendanceStatus.checkedOut);
@@ -30,11 +33,13 @@ class AttendanceState {
     AttendanceStatus? status,
     String? errorMessage,
     String? lastActionMessage,
+    List<String>? incompleteRooms,
   }) {
     return AttendanceState(
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
       lastActionMessage: lastActionMessage ?? this.lastActionMessage,
+      incompleteRooms: incompleteRooms ?? this.incompleteRooms,
     );
   }
 }
@@ -116,7 +121,9 @@ class AttendanceController extends StateNotifier<AttendanceState> {
   }
 
   /// Eksekusi Check-Out Karyawan (Pengambilan GPS + Device Info ➔ Kirim API)
-  Future<void> checkOut() async {
+  ///
+  /// Sprint 7.3: Mendukung parameter [confirmIncomplete] untuk memotong validasi task.
+  Future<void> checkOut({bool confirmIncomplete = false}) async {
     state = state.copyWith(status: AttendanceStatus.loading);
     try {
       // 1. Dapatkan user_id dari Secure Storage
@@ -145,27 +152,51 @@ class AttendanceController extends StateNotifier<AttendanceState> {
         latitude: lat,
         longitude: lng,
         deviceId: device.deviceId,
+        confirmIncomplete: confirmIncomplete,
       );
 
       if (success) {
         state = state.copyWith(
           status: AttendanceStatus.success,
           lastActionMessage: 'Check-Out Berhasil!\nTerima Kasih Atas Kerja Keras Anda.',
+          incompleteRooms: const [],
         );
         await Future.delayed(const Duration(seconds: 2));
         state = state.copyWith(status: AttendanceStatus.checkedOut);
       } else {
         throw AppFailure.local('Check-Out ditolak oleh server.');
       }
+    } on IncompleteTasksFailure catch (e) {
+      // Sprint 7.3: Set state ke warning dengan daftar kamar
+      state = state.copyWith(
+        status: AttendanceStatus.incompleteTasksWarning,
+        incompleteRooms: e.rooms,
+      );
     } on AppFailure catch (e) {
-      state = state.copyWith(status: AttendanceStatus.error, errorMessage: e.message);
+      state = state.copyWith(
+        status: AttendanceStatus.error,
+        errorMessage: e.message,
+        incompleteRooms: const [],
+      );
       await Future.delayed(const Duration(seconds: 2));
       state = state.copyWith(status: AttendanceStatus.checkedIn);
     } catch (e) {
-      state = state.copyWith(status: AttendanceStatus.error, errorMessage: 'Terjadi kesalahan: $e');
+      state = state.copyWith(
+        status: AttendanceStatus.error,
+        errorMessage: 'Terjadi kesalahan: $e',
+        incompleteRooms: const [],
+      );
       await Future.delayed(const Duration(seconds: 2));
       state = state.copyWith(status: AttendanceStatus.checkedIn);
     }
+  }
+
+  /// Sprint 7.3: Membatalkan Check-Out dan mengembalikan state ke CheckedIn
+  void cancelCheckOut() {
+    state = state.copyWith(
+      status: AttendanceStatus.checkedIn,
+      incompleteRooms: const [],
+    );
   }
 
   /// Reset manual error status

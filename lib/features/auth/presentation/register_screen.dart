@@ -6,6 +6,7 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import 'auth_controller.dart';
+import '../data/auth_repository.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -24,16 +25,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _employeeIdController = TextEditingController();
 
-  String _selectedHotel = 'dagosky';
+  String? _selectedHotel;
   String _selectedDept = 'Housekeeping';
   String _selectedPosition = 'Staff';
 
-  final List<Map<String, String>> _hotels = [
-    {'id': 'dagosky', 'name': 'Dago Sky'},
-    {'id': 'paskal', 'name': 'Paskal Pelangi'},
-    {'id': 'patradisa', 'name': 'Patra Disa'},
-    {'id': 'sukajadi', 'name': 'Sukajadi'},
-  ];
+  List<Map<String, dynamic>> _dynamicHotels = [];
+  bool _isLoadingHotels = true;
+  String? _hotelError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHotels();
+  }
+
+  Future<void> _loadHotels() async {
+    setState(() {
+      _isLoadingHotels = true;
+      _hotelError = null;
+    });
+    try {
+      final hotels = await ref.read(authRepositoryProvider).getHotels();
+      setState(() {
+        _dynamicHotels = hotels;
+        _isLoadingHotels = false;
+        if (hotels.isNotEmpty) {
+          _selectedHotel = hotels.first['hotel_id'] as String?;
+        } else {
+          _selectedHotel = null;
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingHotels = false;
+        _hotelError = 'Gagal memuat daftar hotel.';
+      });
+    }
+  }
 
   final List<String> _departments = [
     'Housekeeping',
@@ -62,12 +90,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   void _onRegisterPressed() async {
     if (_formKey.currentState?.validate() ?? false) {
+      if (_selectedHotel == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Silakan pilih hotel terlebih dahulu')),
+        );
+        return;
+      }
       final success = await ref.read(authControllerProvider.notifier).register(
             fullName: _fullNameController.text.trim(),
             email: _emailController.text.trim(),
             phone: _phoneController.text.trim(),
             password: _passwordController.text,
-            hotelId: _selectedHotel,
+            hotelId: _selectedHotel!,
             department: _selectedDept,
             position: _selectedPosition,
             employeeId: _employeeIdController.text.trim().isEmpty 
@@ -189,27 +223,84 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                           
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            value: _selectedHotel,
-                            decoration: InputDecoration(
-                              labelText: 'Hotel Penugasan',
-                              prefixIcon: const Icon(Icons.hotel_outlined),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          if (_isLoadingHotels)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Memuat daftar hotel...',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                ],
                               ),
+                            )
+                          else if (_hotelError != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _hotelError!,
+                                    style: TextStyle(color: theme.colorScheme.error),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  TextButton.icon(
+                                    onPressed: _loadHotels,
+                                    icon: const Icon(Icons.refresh, size: 18),
+                                    label: const Text('Coba Lagi'),
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (_dynamicHotels.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                                'Belum ada hotel tersedia.',
+                                style: TextStyle(color: theme.colorScheme.error),
+                              ),
+                            )
+                          else
+                            DropdownButtonFormField<String>(
+                              value: _selectedHotel,
+                              decoration: InputDecoration(
+                                labelText: 'Hotel Penugasan',
+                                prefixIcon: const Icon(Icons.hotel_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              items: _dynamicHotels.map((h) {
+                                return DropdownMenuItem<String>(
+                                  value: h['hotel_id'] as String,
+                                  child: Text(h['hotel_name'] as String),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _selectedHotel = val);
+                                }
+                              },
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'Silakan pilih hotel penugasan';
+                                }
+                                return null;
+                              },
                             ),
-                            items: _hotels.map((h) {
-                              return DropdownMenuItem<String>(
-                                value: h['id'],
-                                child: Text(h['name']!),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() => _selectedHotel = val);
-                              }
-                            },
-                          ),
                           
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
