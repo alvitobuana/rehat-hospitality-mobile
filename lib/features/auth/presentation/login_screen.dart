@@ -113,12 +113,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 16),
                           AppTextField(
                             controller: _usernameController,
-                            labelText: 'Username / ID Karyawan',
-                            hintText: 'Masukkan username...',
+                            labelText: 'Username / Email / ID Karyawan',
+                            hintText: 'Username, email, atau ID karyawan...',
                             prefixIcon: const Icon(Icons.person_outline),
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
-                                return 'Username wajib diisi';
+                                return 'Username / Email / ID Karyawan wajib diisi';
                               }
                               return null;
                             },

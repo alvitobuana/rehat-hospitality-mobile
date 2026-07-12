@@ -3,168 +3,271 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/photo_upload_repository.dart';
 
 // =============================================================================
-// Upload State Machine
+// Upload State Machine — Sprint 7.1 Multi-Photo
 // =============================================================================
 
-/// Enum status upload foto
+/// Enum status upload foto (per-foto)
 enum UploadStatus { idle, picking, uploading, success, error }
 
-/// State untuk proses upload foto
-class PhotoUploadState {
+/// State untuk satu slot foto (satu dari max 3)
+class PhotoSlotState {
   final UploadStatus status;
-
-  /// Progres upload: 0.0 – 1.0 (null saat tidak ada progress)
-  final double? uploadProgress;
-
-  /// Path foto lokal yang dipilih user
   final String? localImagePath;
-
-  /// URL / path foto dari server (tersedia setelah sukses)
   final String? remotePhotoPath;
-
-  /// Pesan error jika status == error
+  final double? uploadProgress;
   final String? errorMessage;
 
-  const PhotoUploadState({
+  const PhotoSlotState({
     this.status = UploadStatus.idle,
-    this.uploadProgress,
     this.localImagePath,
     this.remotePhotoPath,
+    this.uploadProgress,
     this.errorMessage,
   });
 
-  bool get isIdle => status == UploadStatus.idle;
-  bool get isPicking => status == UploadStatus.picking;
+  bool get hasPhoto => localImagePath != null && localImagePath!.isNotEmpty;
   bool get isUploading => status == UploadStatus.uploading;
   bool get isSuccess => status == UploadStatus.success;
   bool get isError => status == UploadStatus.error;
-  bool get isBusy => isPicking || isUploading;
 
-  PhotoUploadState copyWith({
+  PhotoSlotState copyWith({
     UploadStatus? status,
-    double? uploadProgress,
     String? localImagePath,
     String? remotePhotoPath,
+    double? uploadProgress,
     String? errorMessage,
+    bool clearLocalPath = false,
   }) {
-    return PhotoUploadState(
+    return PhotoSlotState(
       status: status ?? this.status,
-      uploadProgress: uploadProgress ?? this.uploadProgress,
-      localImagePath: localImagePath ?? this.localImagePath,
+      localImagePath: clearLocalPath ? null : (localImagePath ?? this.localImagePath),
       remotePhotoPath: remotePhotoPath ?? this.remotePhotoPath,
+      uploadProgress: uploadProgress ?? this.uploadProgress,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 
-  /// Reset ke state idle bersih
-  PhotoUploadState reset() {
-    return const PhotoUploadState(status: UploadStatus.idle);
+  PhotoSlotState reset() => const PhotoSlotState();
+}
+
+/// State keseluruhan multi-photo upload
+class MultiPhotoUploadState {
+  /// Daftar slot foto — maksimum [PhotoUploadRepository.maxPhotosPerTask]
+  final List<PhotoSlotState> slots;
+
+  /// Index slot yang sedang aktif upload, null jika tidak ada
+  final int? uploadingSlotIndex;
+
+  /// Pesan error global (jika ada kegagalan fatal)
+  final String? globalError;
+
+  const MultiPhotoUploadState({
+    this.slots = const [],
+    this.uploadingSlotIndex,
+    this.globalError,
+  });
+
+  /// Jumlah slot foto yang sudah diisi (ada localImagePath)
+  int get photoCount => slots.where((s) => s.hasPhoto).length;
+
+  /// Jumlah foto yang sudah berhasil diupload ke server
+  int get uploadedCount => slots.where((s) => s.isSuccess).length;
+
+  /// true jika semua slot yang terisi sudah berhasil diupload
+  bool get allUploaded => photoCount > 0 && uploadedCount == photoCount;
+
+  /// true jika ada yang sedang diupload
+  bool get isUploading => uploadingSlotIndex != null;
+
+  /// true jika minimal 1 foto dipilih
+  bool get hasAnyPhoto => photoCount > 0;
+
+  /// true jika masih bisa tambah foto (belum mencapai batas)
+  bool get canAddMore => photoCount < PhotoUploadRepository.maxPhotosPerTask;
+
+  MultiPhotoUploadState copyWith({
+    List<PhotoSlotState>? slots,
+    int? uploadingSlotIndex,
+    String? globalError,
+    bool clearUploadingSlot = false,
+    bool clearGlobalError = false,
+  }) {
+    return MultiPhotoUploadState(
+      slots: slots ?? this.slots,
+      uploadingSlotIndex: clearUploadingSlot ? null : (uploadingSlotIndex ?? this.uploadingSlotIndex),
+      globalError: clearGlobalError ? null : (globalError ?? this.globalError),
+    );
   }
+
+  MultiPhotoUploadState reset() => const MultiPhotoUploadState();
 }
 
 // =============================================================================
 // Controller
 // =============================================================================
 
-class PhotoUploadController extends StateNotifier<PhotoUploadState> {
+class PhotoUploadController extends StateNotifier<MultiPhotoUploadState> {
   final PhotoUploadRepository _repository;
 
-  PhotoUploadController(this._repository) : super(const PhotoUploadState());
+  PhotoUploadController(this._repository) : super(const MultiPhotoUploadState());
 
-  /// Dipanggil dari UI saat user memilih foto dari picker (langkah 1)
-  void onImagePicked(File imageFile) {
-    state = PhotoUploadState(
+  // ---------------------------------------------------------------------------
+  // Photo Management
+  // ---------------------------------------------------------------------------
+
+  /// Menambahkan foto baru ke slot berikutnya yang kosong.
+  /// Diabaikan jika sudah mencapai batas [PhotoUploadRepository.maxPhotosPerTask].
+  void addImage(File imageFile) {
+    if (!state.canAddMore) return;
+
+    final newSlots = List<PhotoSlotState>.from(state.slots)
+      ..add(PhotoSlotState(
+        status: UploadStatus.idle,
+        localImagePath: imageFile.path,
+      ));
+
+    state = state.copyWith(slots: newSlots, clearGlobalError: true);
+  }
+
+  /// Menghapus foto pada slot [index].
+  void removeImage(int index) {
+    if (index < 0 || index >= state.slots.length) return;
+
+    final newSlots = List<PhotoSlotState>.from(state.slots)..removeAt(index);
+    state = state.copyWith(slots: newSlots, clearGlobalError: true);
+  }
+
+  /// Mengganti foto pada slot [index] dengan foto baru.
+  void replaceImage(int index, File imageFile) {
+    if (index < 0 || index >= state.slots.length) return;
+
+    final newSlots = List<PhotoSlotState>.from(state.slots);
+    newSlots[index] = PhotoSlotState(
       status: UploadStatus.idle,
       localImagePath: imageFile.path,
     );
+    state = state.copyWith(slots: newSlots, clearGlobalError: true);
   }
 
-  /// Dipanggil dari UI saat kamera/galeri sedang dibuka (langkah 0)
+  /// Dipanggil dari UI saat kamera/galeri sedang dibuka
   void onPickingStarted() {
-    state = state.copyWith(status: UploadStatus.picking);
+    // Tidak mengubah slot, hanya sinyal UI
   }
 
   /// Dipanggil dari UI saat pemilihan foto dibatalkan
   void onPickingCancelled() {
-    state = state.copyWith(status: UploadStatus.idle);
+    // Tidak ada state yang perlu diubah
   }
 
-  /// Mengunggah foto ke backend.
+  // ---------------------------------------------------------------------------
+  // Upload
+  // ---------------------------------------------------------------------------
+
+  /// Mengunggah semua foto yang ada ke backend secara sekuensial.
   ///
-  /// Alur:
-  /// 1. Validasi ada foto yang dipilih.
-  /// 2. Set state ke [UploadStatus.uploading].
-  /// 3. Kirim POST multipart ke backend dengan progress callback.
-  /// 4. Sukses → set state ke [UploadStatus.success] dengan remotePhotoPath.
-  /// 5. Gagal → set state ke [UploadStatus.error] dengan pesan error.
-  Future<void> uploadPhoto({required int taskId}) async {
-    final localPath = state.localImagePath;
-    if (localPath == null || localPath.isEmpty) {
+  /// Setiap foto diunggah satu per satu. Jika salah satu gagal,
+  /// proses dilanjutkan ke foto berikutnya (tidak abort).
+  ///
+  /// Mengembalikan true jika semua foto berhasil diunggah.
+  Future<bool> uploadAllPhotos({required int taskId}) async {
+    if (!state.hasAnyPhoto) return false;
+    if (state.isUploading) return false;
+
+    bool allSuccess = true;
+
+    for (int i = 0; i < state.slots.length; i++) {
+      final slot = state.slots[i];
+
+      // Skip slot yang sudah diupload sebelumnya
+      if (slot.isSuccess) continue;
+      // Skip slot yang tidak memiliki foto
+      if (!slot.hasPhoto) continue;
+
+      // Set state uploading untuk slot ini
+      final uploadingSlots = List<PhotoSlotState>.from(state.slots);
+      uploadingSlots[i] = slot.copyWith(
+        status: UploadStatus.uploading,
+        uploadProgress: 0.0,
+      );
       state = state.copyWith(
-        status: UploadStatus.error,
-        errorMessage: 'Belum ada foto yang dipilih.',
+        slots: uploadingSlots,
+        uploadingSlotIndex: i,
+        clearGlobalError: true,
       );
-      return;
+
+      try {
+        final result = await _repository.uploadPhoto(
+          taskId: taskId,
+          imageFile: File(slot.localImagePath!),
+          photoIndex: i + 1, // photoIndex adalah 1-based
+          onSendProgress: (sent, total) {
+            if (total > 0) {
+              final currentSlots = List<PhotoSlotState>.from(state.slots);
+              currentSlots[i] = currentSlots[i].copyWith(
+                status: UploadStatus.uploading,
+                uploadProgress: sent / total,
+              );
+              state = state.copyWith(slots: currentSlots);
+            }
+          },
+        );
+
+        // Sukses — update slot
+        final successSlots = List<PhotoSlotState>.from(state.slots);
+        successSlots[i] = slot.copyWith(
+          status: UploadStatus.success,
+          remotePhotoPath: result.photoPath,
+          uploadProgress: 1.0,
+        );
+        state = state.copyWith(
+          slots: successSlots,
+          clearUploadingSlot: true,
+        );
+      } catch (e) {
+        // Gagal — tandai slot error, lanjut ke foto berikutnya
+        allSuccess = false;
+        final errorSlots = List<PhotoSlotState>.from(state.slots);
+        errorSlots[i] = slot.copyWith(
+          status: UploadStatus.error,
+          errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        );
+        state = state.copyWith(
+          slots: errorSlots,
+          clearUploadingSlot: true,
+        );
+      }
     }
 
-    // Guard: cegah double upload
-    if (state.isUploading) return;
-
-    state = PhotoUploadState(
-      status: UploadStatus.uploading,
-      localImagePath: localPath,
-      uploadProgress: 0.0,
-    );
-
-    try {
-      final result = await _repository.uploadPhoto(
-        taskId: taskId,
-        imageFile: File(localPath),
-        onSendProgress: (sent, total) {
-          if (total > 0) {
-            final progress = sent / total;
-            state = state.copyWith(
-              status: UploadStatus.uploading,
-              uploadProgress: progress,
-            );
-          }
-        },
-      );
-
-      state = PhotoUploadState(
-        status: UploadStatus.success,
-        localImagePath: localPath,
-        remotePhotoPath: result.photoPath,
-        uploadProgress: 1.0,
-      );
-    } catch (e) {
-      state = PhotoUploadState(
-        status: UploadStatus.error,
-        localImagePath: localPath,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
-      );
-    }
+    return allSuccess;
   }
 
-  /// Reset ke state idle untuk mengulang proses dari awal
+  /// Reset semua slot ke kondisi awal (idle)
   void reset() {
     state = state.reset();
   }
 }
 
 // =============================================================================
-// Provider
+// Providers
 // =============================================================================
 
 /// Provider family berdasarkan taskId agar setiap task memiliki state upload sendiri
 final photoUploadControllerProvider = StateNotifierProvider.family<
-    PhotoUploadController, PhotoUploadState, int>((ref, taskId) {
+    PhotoUploadController, MultiPhotoUploadState, int>((ref, taskId) {
   final repository = ref.watch(photoUploadRepositoryProvider);
   return PhotoUploadController(repository);
 });
 
-/// Pintasan alias reaktif untuk mendapatkan PhotoUploadState berdasarkan taskId
+/// Pintasan alias reaktif untuk mendapatkan MultiPhotoUploadState berdasarkan taskId
 final photoUploadProvider =
-    Provider.family<PhotoUploadState, int>((ref, taskId) {
+    Provider.family<MultiPhotoUploadState, int>((ref, taskId) {
   return ref.watch(photoUploadControllerProvider(taskId));
 });
+
+// ---------------------------------------------------------------------------
+// Backward-compat: alias untuk kode lama yang masih menggunakan PhotoUploadState
+// ---------------------------------------------------------------------------
+
+/// @deprecated Gunakan [MultiPhotoUploadState] dan [photoUploadProvider].
+/// Disediakan agar kode lama tidak break sebelum dimigrasi penuh.
+typedef PhotoUploadState = MultiPhotoUploadState;

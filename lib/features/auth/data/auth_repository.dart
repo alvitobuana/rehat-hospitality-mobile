@@ -190,4 +190,20 @@ class AuthRepository {
       throw AppFailure.local('Terjadi kesalahan koneksi saat memeriksa status registrasi: $e');
     }
   }
+
+  /// Mengambil daftar hotel aktif dari database secara dinamis
+  Future<List<Map<String, dynamic>>> getHotels() async {
+    try {
+      final response = await _dioClient.get('/Housekeeping/api_get_hotels.php');
+      final data = response.data;
+      if (data is List) {
+        return data.map((item) => Map<String, dynamic>.from(item)).toList();
+      }
+      throw AppFailure.local('Format data hotel tidak valid.', 'INVALID_HOTEL_DATA');
+    } on AppFailure {
+      rethrow;
+    } catch (e) {
+      throw AppFailure.local('Gagal mengambil daftar hotel: $e');
+    }
+  }
 }
