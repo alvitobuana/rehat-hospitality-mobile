@@ -90,3 +90,13 @@ class AppFailure implements Exception {
   @override
   String toString() => 'AppFailure(code: $code, message: $message, statusCode: $statusCode)';
 }
+
+/// Kegagalan check-out karena masih ada tugas yang belum selesai
+class IncompleteTasksFailure extends AppFailure {
+  final List<String> rooms;
+  
+  const IncompleteTasksFailure({
+    required this.rooms,
+    required String message,
+  }) : super(message: message, code: 'INCOMPLETE_TASKS');
+}

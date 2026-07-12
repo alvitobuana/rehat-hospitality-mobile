@@ -63,6 +63,22 @@ class TaskDetail {
     required this.checklist,
   });
 
+  // ---------------------------------------------------------------------------
+  // Sprint 7.1: Checklist Progress Getters
+  // ---------------------------------------------------------------------------
+
+  /// Jumlah item checklist yang telah dicentang
+  int get checklistDoneCount => checklist.where((item) => item.isChecked).length;
+
+  /// Total item checklist
+  int get checklistTotalCount => checklist.length;
+
+  /// true jika semua item checklist sudah dicentang ATAU tidak ada item checklist
+  bool get isChecklistComplete =>
+      checklist.isEmpty || checklistDoneCount == checklist.length;
+
+  // ---------------------------------------------------------------------------
+
   factory TaskDetail.fromJson(Map<String, dynamic> json) {
     final list = json['checklist'] as List? ?? [];
     return TaskDetail(

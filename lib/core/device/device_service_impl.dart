@@ -54,8 +54,7 @@ class DeviceServiceImpl implements DeviceService {
 
   @override
   Future<bool> isDeviceBound(String userId) async {
-    int? uid = int.tryParse(userId);
-    uid ??= await _sessionManager.getUserId();
+    final uid = await _sessionManager.getUserId();
     
     if (uid == null) {
       _logger.e('Cannot validate device: user_id is null or invalid: $userId');
@@ -74,8 +73,7 @@ class DeviceServiceImpl implements DeviceService {
 
   @override
   Future<bool> bindDevice(String userId, DeviceInfo device) async {
-    int? uid = int.tryParse(userId);
-    uid ??= await _sessionManager.getUserId();
+    final uid = await _sessionManager.getUserId();
     
     if (uid == null) {
       _logger.e('Cannot register device: user_id is null or invalid: $userId');

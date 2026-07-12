@@ -35,6 +35,58 @@ class DashboardPlaceholderScreen extends ConsumerWidget {
           ),
         );
         ref.read(attendanceControllerProvider.notifier).clearError();
+      } else if (next.status == AttendanceStatus.incompleteTasksWarning) {
+        // Sprint 7.3: Dialog warning jika ada tugas yang belum selesai saat check-out
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Tugas Belum Selesai', style: TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Anda masih memiliki tugas yang belum selesai.\n\nTask:',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 10),
+                  ...next.incompleteRooms.map((room) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2.0),
+                        child: Text(
+                          '• $room',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      )),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Apakah Anda yakin ingin Check Out?',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    ref.read(attendanceControllerProvider.notifier).cancelCheckOut();
+                  },
+                  child: const Text('Kembali', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    ref.read(attendanceControllerProvider.notifier).checkOut(confirmIncomplete: true);
+                  },
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+                  child: const Text('Tetap Check Out'),
+                ),
+              ],
+            );
+          },
+        );
       }
     });
 

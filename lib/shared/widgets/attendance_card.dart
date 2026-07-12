@@ -35,7 +35,10 @@ class AttendanceCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              StatusBadge.fromStatusString(isCheckedIn ? 'clean' : 'dirty'),
+              StatusBadge(
+                label: isCheckedIn ? 'Aktif' : 'Belum Aktif',
+                type: isCheckedIn ? BadgeType.success : BadgeType.danger,
+              ),
             ],
           ),
           const SizedBox(height: 12),
