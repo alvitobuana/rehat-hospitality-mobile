@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/app_card.dart';
+import '../../../core/design_system/app_colors.dart';
+import '../../../core/design_system/app_insets.dart';
+import '../../../core/design_system/app_typography.dart';
+import '../../../shared/widgets/app_page.dart';
+import '../../../shared/widgets/app_cards.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_text_field.dart';
-import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import 'auth_controller.dart';
 import '../data/auth_repository.dart';
@@ -137,266 +141,223 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return LoadingOverlay(
       isLoading: isLoading,
       message: 'Mendaftarkan akun...',
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Daftar Akun Baru'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-              child: Form(
-                key: _formKey,
+      child: AppPage(
+        title: 'Daftar Akun Baru',
+        useSafeArea: true,
+        scrollable: true,
+        padding: AppInsets.page(context),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Bergabung dengan Rehat',
+                style: AppTypography.heading(context).copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppInsets.s8),
+              Text(
+                'Lengkapi formulir di bawah untuk pendaftaran staf housekeeping',
+                style: AppTypography.caption(context),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppInsets.s24),
+              
+              AppCard(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Bergabung dengan Rehat',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
+                    AppTextField(
+                      controller: _fullNameController,
+                      labelText: 'Nama Lengkap',
+                      hintText: 'Masukkan nama lengkap...',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Nama lengkap wajib diisi';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Lengkapi formulir di bawah untuk pendaftaran staf housekeeping',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
                     
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AppTextField(
-                            controller: _fullNameController,
-                            labelText: 'Nama Lengkap',
-                            hintText: 'Masukkan nama lengkap...',
-                            prefixIcon: const Icon(Icons.person_outline),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Nama lengkap wajib diisi';
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          AppTextField(
-                            controller: _emailController,
-                            labelText: 'Alamat Email',
-                            hintText: 'Masukkan email...',
-                            keyboardType: TextInputType.emailAddress,
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Email wajib diisi';
-                              }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val.trim())) {
-                                return 'Format email tidak valid';
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          AppTextField(
-                            controller: _phoneController,
-                            labelText: 'Nomor HP',
-                            hintText: 'Contoh: 08123456789',
-                            keyboardType: TextInputType.phone,
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Nomor HP wajib diisi';
-                              }
-                              return null;
-                            },
-                          ),
-
-                          AppTextField(
-                            controller: _employeeIdController,
-                            labelText: 'ID Karyawan (Opsional)',
-                            hintText: 'Masukkan ID karyawan jika ada...',
-                            prefixIcon: const Icon(Icons.badge_outlined),
-                          ),
-                          
-                          const SizedBox(height: 12),
-                          if (_isLoadingHotels)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Row(
-                                children: [
-                                  const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Memuat daftar hotel...',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                ],
-                              ),
-                            )
-                          else if (_hotelError != null)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                    AppTextField(
+                      controller: _emailController,
+                      labelText: 'Alamat Email',
+                      hintText: 'Masukkan email...',
+                      keyboardType: TextInputType.emailAddress,
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Email wajib diisi';
+                        }
+                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val.trim())) {
+                          return 'Format email tidak valid';
+                        }
+                        return null;
+                      },
+                    ),
+                    
+                    AppTextField(
+                      controller: _phoneController,
+                      labelText: 'Nomor Handphone',
+                      hintText: 'Contoh: 081234567890...',
+                      keyboardType: TextInputType.phone,
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Nomor HP wajib diisi';
+                        }
+                        if (val.trim().length < 9) {
+                          return 'Nomor HP minimal 9 digit';
+                        }
+                        return null;
+                      },
+                    ),
+                    
+                    AppTextField(
+                      controller: _employeeIdController,
+                      labelText: 'Nomor Induk Karyawan (NIP) - Opsional',
+                      hintText: 'Masukkan NIP jika ada...',
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                    ),
+                    
+                    const SizedBox(height: AppInsets.s8),
+                    _isLoadingHotels
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        : _hotelError != null
+                            ? Column(
                                 children: [
                                   Text(
                                     _hotelError!,
-                                    style: TextStyle(color: theme.colorScheme.error),
+                                    style: const TextStyle(color: Colors.red),
                                   ),
-                                  const SizedBox(height: 4),
-                                  TextButton.icon(
+                                  const SizedBox(height: 8),
+                                  AppOutlineButton(
+                                    text: 'Muat Ulang Hotel',
                                     onPressed: _loadHotels,
-                                    icon: const Icon(Icons.refresh, size: 18),
-                                    label: const Text('Coba Lagi'),
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
                                   ),
                                 ],
-                              ),
-                            )
-                          else if (_dynamicHotels.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Text(
-                                'Belum ada hotel tersedia.',
-                                style: TextStyle(color: theme.colorScheme.error),
-                              ),
-                            )
-                          else
-                            DropdownButtonFormField<String>(
-                              value: _selectedHotel,
-                              decoration: InputDecoration(
-                                labelText: 'Hotel Penugasan',
-                                prefixIcon: const Icon(Icons.hotel_outlined),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              )
+                            : DropdownButtonFormField<String>(
+                                value: _selectedHotel,
+                                decoration: InputDecoration(
+                                  labelText: 'Lokasi Penempatan Hotel',
+                                  prefixIcon: const Icon(Icons.hotel_outlined),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(AppInsets.r8),
+                                  ),
                                 ),
-                              ),
-                              items: _dynamicHotels.map((h) {
-                                return DropdownMenuItem<String>(
-                                  value: h['hotel_id'] as String,
-                                  child: Text(h['hotel_name'] as String),
-                                );
-                              }).toList(),
-                              onChanged: (val) {
-                                if (val != null) {
+                                items: _dynamicHotels.map((h) {
+                                  return DropdownMenuItem<String>(
+                                    value: h['hotel_id'] as String,
+                                    child: Text(h['hotel_name'] as String),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
                                   setState(() => _selectedHotel = val);
-                                }
-                              },
-                              validator: (val) {
-                                if (val == null || val.isEmpty) {
-                                  return 'Silakan pilih hotel penugasan';
-                                }
-                                return null;
-                              },
-                            ),
-                          
-                          const SizedBox(height: 16),
-                          DropdownButtonFormField<String>(
-                            value: _selectedDept,
-                            decoration: InputDecoration(
-                              labelText: 'Departemen',
-                              prefixIcon: const Icon(Icons.business_outlined),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                },
                               ),
-                            ),
-                            items: _departments.map((d) {
-                              return DropdownMenuItem<String>(
-                                value: d,
-                                child: Text(d),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() => _selectedDept = val);
-                              }
-                            },
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          DropdownButtonFormField<String>(
-                            value: _selectedPosition,
-                            decoration: InputDecoration(
-                              labelText: 'Jabatan',
-                              prefixIcon: const Icon(Icons.work_outline),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            items: _positions.map((p) {
-                              return DropdownMenuItem<String>(
-                                value: p,
-                                child: Text(p),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() => _selectedPosition = val);
-                              }
-                            },
-                          ),
-                          
-                          const SizedBox(height: 8),
-                          AppTextField(
-                            controller: _passwordController,
-                            labelText: 'Kata Sandi',
-                            hintText: 'Minimal 8 karakter...',
-                            obscureText: true,
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            validator: (val) {
-                              if (val == null || val.isEmpty) {
-                                return 'Kata sandi wajib diisi';
-                              }
-                              if (val.length < 8) {
-                                return 'Kata sandi minimal 8 karakter';
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          AppTextField(
-                            controller: _confirmPasswordController,
-                            labelText: 'Konfirmasi Kata Sandi',
-                            hintText: 'Ulangi kata sandi...',
-                            obscureText: true,
-                            prefixIcon: const Icon(Icons.lock_reset_outlined),
-                            validator: (val) {
-                              if (val == null || val.isEmpty) {
-                                return 'Konfirmasi kata sandi wajib diisi';
-                              }
-                              if (val != _passwordController.text) {
-                                return 'Konfirmasi kata sandi tidak cocok';
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          CustomButton(
-                            text: 'DAFTAR SEKARANG',
-                            isLoading: isLoading,
-                            onPressed: _onRegisterPressed,
-                          ),
-                        ],
+                    
+                    const SizedBox(height: AppInsets.s12),
+                    DropdownButtonFormField<String>(
+                      value: _selectedDept,
+                      decoration: InputDecoration(
+                        labelText: 'Departemen Kerja',
+                        prefixIcon: const Icon(Icons.business_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppInsets.r8),
+                        ),
                       ),
+                      items: _departments.map((d) {
+                        return DropdownMenuItem<String>(
+                          value: d,
+                          child: Text(d),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedDept = val);
+                        }
+                      },
                     ),
-                    const SizedBox(height: 24),
+                    
+                    const SizedBox(height: AppInsets.s12),
+                    DropdownButtonFormField<String>(
+                      value: _selectedPosition,
+                      decoration: InputDecoration(
+                        labelText: 'Posisi Jabatan',
+                        prefixIcon: const Icon(Icons.work_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppInsets.r8),
+                        ),
+                      ),
+                      items: _positions.map((p) {
+                        return DropdownMenuItem<String>(
+                          value: p,
+                          child: Text(p),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedPosition = val);
+                        }
+                      },
+                    ),
+                    
+                    const SizedBox(height: AppInsets.s8),
+                    AppTextField(
+                      controller: _passwordController,
+                      labelText: 'Kata Sandi',
+                      hintText: 'Minimal 8 karakter...',
+                      obscureText: true,
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Kata sandi wajib diisi';
+                        }
+                        if (val.length < 8) {
+                          return 'Kata sandi minimal 8 karakter';
+                        }
+                        return null;
+                      },
+                    ),
+                    
+                    AppTextField(
+                      controller: _confirmPasswordController,
+                      labelText: 'Konfirmasi Kata Sandi',
+                      hintText: 'Ulangi kata sandi...',
+                      obscureText: true,
+                      prefixIcon: const Icon(Icons.lock_reset_outlined),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Konfirmasi kata sandi wajib diisi';
+                        }
+                        if (val != _passwordController.text) {
+                          return 'Konfirmasi kata sandi tidak cocok';
+                        }
+                        return null;
+                      },
+                    ),
+                    
+                    const SizedBox(height: AppInsets.s16),
+                    AppPrimaryButton(
+                      text: 'DAFTAR SEKARANG',
+                      isLoading: isLoading,
+                      onPressed: _onRegisterPressed,
+                    ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: AppInsets.s24),
+            ],
           ),
         ),
       ),

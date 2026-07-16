@@ -52,6 +52,8 @@ class TaskDetail {
   final String assignedStaff;
   final String createdAt;
   final List<ChecklistItem> checklist;
+  final int photoCount;
+  final List<String> photos;
 
   TaskDetail({
     required this.taskId,
@@ -61,6 +63,8 @@ class TaskDetail {
     required this.assignedStaff,
     required this.createdAt,
     required this.checklist,
+    this.photoCount = 0,
+    this.photos = const [],
   });
 
   // ---------------------------------------------------------------------------
@@ -81,6 +85,7 @@ class TaskDetail {
 
   factory TaskDetail.fromJson(Map<String, dynamic> json) {
     final list = json['checklist'] as List? ?? [];
+    final photosList = json['photos'] as List? ?? [];
     return TaskDetail(
       taskId: json['task_id'] as int? ?? 0,
       room: json['room'] as String? ?? '',
@@ -89,6 +94,8 @@ class TaskDetail {
       assignedStaff: json['assigned_staff'] as String? ?? '',
       createdAt: json['created_at'] as String? ?? '',
       checklist: list.map((item) => ChecklistItem.fromJson(item)).toList(),
+      photoCount: json['photo_count'] as int? ?? 0,
+      photos: photosList.map((p) => (p['photo_path'] ?? '') as String).where((path) => path.isNotEmpty).toList(),
     );
   }
 
@@ -96,6 +103,8 @@ class TaskDetail {
   TaskDetail copyWith({
     String? status,
     List<ChecklistItem>? checklist,
+    int? photoCount,
+    List<String>? photos,
   }) {
     return TaskDetail(
       taskId: taskId,
@@ -105,6 +114,8 @@ class TaskDetail {
       assignedStaff: assignedStaff,
       createdAt: createdAt,
       checklist: checklist ?? this.checklist,
+      photoCount: photoCount ?? this.photoCount,
+      photos: photos ?? this.photos,
     );
   }
 
@@ -117,6 +128,8 @@ class TaskDetail {
       'assigned_staff': assignedStaff,
       'created_at': createdAt,
       'checklist': checklist.map((item) => item.toJson()).toList(),
+      'photo_count': photoCount,
+      'photos': photos,
     };
   }
 }

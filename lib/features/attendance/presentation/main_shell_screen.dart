@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../history/presentation/history_view.dart';
 import '../../profile/presentation/profile_view.dart';
 import '../../task/presentation/task_list_view.dart';
+import '../../maintenance/presentation/maintenance_report_screen.dart';
 import 'dashboard_screen.dart';
 
 class MainShellScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final List<Widget> _pages = [
     const DashboardScreen(),
     const TaskListView(),
+    const MaintenanceReportScreen(),
     const HistoryView(),
     const ProfileView(),
   ];
@@ -30,6 +32,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (int index) {
           setState(() {
             _currentIndex = index;
@@ -44,7 +47,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
           NavigationDestination(
             icon: Icon(Icons.assignment_outlined),
             selectedIcon: Icon(Icons.assignment),
-            label: 'Tugas Saya',
+            label: 'Tugas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.build_outlined),
+            selectedIcon: Icon(Icons.build),
+            label: 'Lapor',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),

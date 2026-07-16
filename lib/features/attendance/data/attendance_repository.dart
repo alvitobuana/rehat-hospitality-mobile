@@ -141,4 +141,18 @@ class AttendanceRepository {
     }
     return null;
   }
+
+  /// Mengambil status check-in aktif staf dari server
+  Future<bool> getAttendanceStatus() async {
+    try {
+      final response = await _dioClient.get('/Housekeeping/api_get_attendance_status.php');
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['success'] == true) {
+        return data['is_checked_in'] == true;
+      }
+    } catch (e) {
+      _logger.e('Gagal mendapatkan status absensi dari server: $e');
+    }
+    return false;
+  }
 }

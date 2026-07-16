@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/app_card.dart';
+import '../../../core/design_system/app_colors.dart';
+import '../../../core/design_system/app_insets.dart';
+import '../../../core/design_system/app_typography.dart';
+import '../../../shared/widgets/app_page.dart';
+import '../../../shared/widgets/app_cards.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_text_field.dart';
-import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import 'auth_controller.dart';
 
@@ -64,104 +68,97 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return LoadingOverlay(
       isLoading: isLoading,
       message: 'Mengecek keamanan...',
-      child: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
+      child: AppPage(
+        useSafeArea: true,
+        scrollable: true,
+        padding: AppInsets.page(context),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AppInsets.s32),
+              // Brand Logo
+              Center(
+                child: Image.asset(
+                  'assets/logo.png',
+                  height: 54,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: AppInsets.s24),
+              Text(
+                'Rehat Housekeeping',
+                style: AppTypography.heading(context).copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppInsets.s8),
+              Text(
+                'Aplikasi Operasional Staf Kamar',
+                style: AppTypography.caption(context),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppInsets.s32),
+              
+              AppCard(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Brand Logo
+                    Text(
+                      'Masuk Sesi Kerja',
+                      style: AppTypography.title(context),
+                    ),
+                    const SizedBox(height: AppInsets.s16),
+                    AppTextField(
+                      controller: _usernameController,
+                      labelText: 'Username / Email / ID Karyawan',
+                      hintText: 'Username, email, atau ID karyawan...',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Username / Email / ID Karyawan wajib diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    AppTextField(
+                      controller: _passwordController,
+                      labelText: 'Kata Sandi',
+                      hintText: 'Masukkan password...',
+                      obscureText: true,
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Kata sandi wajib diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppInsets.s8),
+                    AppPrimaryButton(
+                      text: 'LOG IN',
+                      isLoading: isLoading,
+                      onPressed: _onLoginPressed,
+                    ),
+                    const SizedBox(height: AppInsets.s16),
                     Center(
-                      child: Image.asset(
-                        'assets/logo.png',
-                        height: 54,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Rehat Housekeeping',
-                      style: theme.textTheme.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Aplikasi Operasional Staf Kamar',
-                      style: theme.textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Masuk Sesi Kerja',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      child: TextButton(
+                        onPressed: () => context.push('/register'),
+                        child: Text(
+                          'Belum punya akun? Daftar sekarang',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 16),
-                          AppTextField(
-                            controller: _usernameController,
-                            labelText: 'Username / Email / ID Karyawan',
-                            hintText: 'Username, email, atau ID karyawan...',
-                            prefixIcon: const Icon(Icons.person_outline),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Username / Email / ID Karyawan wajib diisi';
-                              }
-                              return null;
-                            },
-                          ),
-                          AppTextField(
-                            controller: _passwordController,
-                            labelText: 'Kata Sandi',
-                            hintText: 'Masukkan password...',
-                            obscureText: true,
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            validator: (val) {
-                              if (val == null || val.isEmpty) {
-                                return 'Kata sandi wajib diisi';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          CustomButton(
-                            text: 'LOG IN',
-                            isLoading: isLoading,
-                            onPressed: _onLoginPressed,
-                          ),
-                          const SizedBox(height: 16),
-                          Center(
-                            child: TextButton(
-                              onPressed: () => context.push('/register'),
-                              child: Text(
-                                'Belum punya akun? Daftar sekarang',
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

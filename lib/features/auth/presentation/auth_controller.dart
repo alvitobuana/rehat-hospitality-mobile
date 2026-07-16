@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/device/device_service.dart';
 import '../../../core/exceptions/app_failure.dart';
 import '../../../core/location/location_service.dart';
 import '../../../core/storage/session_manager.dart';
+import '../../../services/firebase_messaging_service.dart';
 import '../data/auth_repository.dart';
+import '../data/device_repository.dart';
 
 enum AuthStatus {
   uninitialized,
@@ -47,7 +51,9 @@ final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
   final deviceService = ref.read(deviceServiceProvider);
   final locationService = ref.read(locationServiceProvider);
   final sessionManager = ref.read(sessionManagerProvider);
-  return AuthController(authRepo, deviceService, locationService, sessionManager);
+  final fcmService = ref.read(firebaseMessagingServiceProvider);
+  final deviceRepository = ref.read(deviceRepositoryProvider);
+  return AuthController(authRepo, deviceService, locationService, sessionManager, fcmService, deviceRepository);
 });
 
 class AuthController extends StateNotifier<AuthState> {
@@ -55,15 +61,28 @@ class AuthController extends StateNotifier<AuthState> {
   final DeviceService _deviceService;
   final LocationService _locationService;
   final SessionManager _sessionManager;
+  final FirebaseMessagingService _fcmService;
+  final DeviceRepository _deviceRepository;
+  final Logger _logger = Logger();
 
   AuthController(
     this._authRepository,
     this._deviceService,
     this._locationService,
     this._sessionManager,
+    this._fcmService,
+    this._deviceRepository,
   ) : super(AuthState.initial()) {
     // Jalankan cek sesi otomatis saat inisialisasi controller
     checkAutoLogin();
+
+    // Daftarkan listener token refresh untuk sinkronisasi token otomatis ke backend
+    _fcmService.setOnTokenRefresh((newToken) async {
+      final userId = await _sessionManager.getUserId();
+      if (userId != null) {
+        await syncFcmToken(isActive: 1);
+      }
+    });
   }
 
   /// Cek Auto Login (Dipanggil saat splash screen dibuka)
@@ -80,6 +99,14 @@ class AuthController extends StateNotifier<AuthState> {
       final userId = sessionData['user_id'] as int?;
       final role = sessionData['role'] as String? ?? 'staff';
       final level = sessionData['level'] as String? ?? 'Non Admin';
+      final hotelId = sessionData['property_id'] as String? ?? '';
+      final hotelName = sessionData['property_name'] as String? ?? '';
+      final fullName = sessionData['full_name'] as String? ?? '';
+      final employeeId = sessionData['employee_id'] as String? ?? '';
+      final profilePhoto = sessionData['profile_photo'] as String? ?? '';
+      final email = sessionData['email'] as String? ?? '';
+      final phone = sessionData['phone'] as String? ?? '';
+      final status = sessionData['user_status'] as String? ?? 'ACTIVE';
       
       if (username != null && userId != null) {
         await _sessionManager.saveSession(
@@ -88,8 +115,21 @@ class AuthController extends StateNotifier<AuthState> {
           username: username,
           role: role,
           level: level,
+          hotelId: hotelId,
+          hotelName: hotelName,
+          fullName: fullName,
+          employeeId: employeeId,
+          profilePhoto: profilePhoto,
+          email: email,
+          phone: phone,
+          status: status,
         );
         await _validateAccessChain(username);
+
+        // Sync FCM token if authentication is successful
+        if (state.status == AuthStatus.authenticated) {
+          await syncFcmToken(isActive: 1);
+        }
       } else {
         throw Exception('Data sesi server tidak lengkap.');
       }
@@ -108,6 +148,14 @@ class AuthController extends StateNotifier<AuthState> {
       final userId = response['user_id'] as int?;
       final role = response['role'] as String? ?? 'staff';
       final level = response['level'] as String? ?? 'Non Admin';
+      final hotelId = response['property_id'] as String? ?? '';
+      final hotelName = response['property_name'] as String? ?? '';
+      final fullName = response['full_name'] as String? ?? '';
+      final employeeId = response['employee_id'] as String? ?? '';
+      final profilePhoto = response['profile_photo'] as String? ?? '';
+      final email = response['email'] as String? ?? '';
+      final phone = response['phone'] as String? ?? '';
+      final status = response['user_status'] as String? ?? 'ACTIVE';
 
       // Ambil phpSessionId dari response Map (yang diekstrak sinkron di repositori)
       // untuk menghindari race condition penulisan async secure storage
@@ -121,8 +169,21 @@ class AuthController extends StateNotifier<AuthState> {
           username: loggedInUser,
           role: role,
           level: level,
+          hotelId: hotelId,
+          hotelName: hotelName,
+          fullName: fullName,
+          employeeId: employeeId,
+          profilePhoto: profilePhoto,
+          email: email,
+          phone: phone,
+          status: status,
         );
         await _validateAccessChain(loggedInUser);
+
+        // Sync FCM token if authentication is successful
+        if (state.status == AuthStatus.authenticated) {
+          await syncFcmToken(isActive: 1);
+        }
       } else {
         throw AppFailure.local('Gagal mendapatkan ID Karyawan dari server.', 'LOGIN_FAILED');
       }
@@ -156,6 +217,11 @@ class AuthController extends StateNotifier<AuthState> {
       if (success) {
         // Cek langkah berikutnya (GPS Permission)
         await _validateAccessChain(state.username);
+
+        // Sync FCM token if authentication is successful
+        if (state.status == AuthStatus.authenticated) {
+          await syncFcmToken(isActive: 1);
+        }
       } else {
         throw AppFailure.local('Gagal mendaftarkan binding perangkat ke server.', 'BINDING_FAILED');
       }
@@ -207,6 +273,7 @@ class AuthController extends StateNotifier<AuthState> {
           status: AuthStatus.authenticated,
           username: state.username,
         );
+        await syncFcmToken(isActive: 1);
         return;
       }
 
@@ -217,6 +284,7 @@ class AuthController extends StateNotifier<AuthState> {
           status: AuthStatus.authenticated,
           username: state.username,
         );
+        await syncFcmToken(isActive: 1);
       } else {
         // Cek sekali lagi apakah sekarang permanently denied
         final newStatus = await _locationService.checkPermissionStatus();
@@ -247,6 +315,8 @@ class AuthController extends StateNotifier<AuthState> {
   /// Logout / Keluar
   Future<void> logout() async {
     state = const AuthState(status: AuthStatus.authenticating);
+    // Nonaktifkan FCM Token di backend sebelum local session dihapus
+    await syncFcmToken(isActive: 0);
     await _authRepository.logout();
     await _sessionManager.clearSession();
     state = const AuthState(status: AuthStatus.unauthenticated);
@@ -375,6 +445,54 @@ class AuthController extends StateNotifier<AuthState> {
         'status': 'PENDING',
         'reason': 'Gagal memeriksa status: $e',
       };
+    }
+  }
+
+  /// Sinkronisasi token FCM ke database backend (Push Notification Foundation)
+  Future<void> syncFcmToken({int isActive = 1}) async {
+    try {
+      final userId = await _sessionManager.getUserId();
+      if (userId == null) {
+        _logger.w('Cannot sync FCM token: userId is null.');
+        return;
+      }
+
+      // Ambil device ID dari secure storage, fallback ke device info jika kosong
+      String? deviceId = await _sessionManager.getDeviceId();
+      if (deviceId == null || deviceId.isEmpty) {
+        final info = await _deviceService.getDeviceInfo();
+        deviceId = info.deviceId;
+        await _sessionManager.saveDeviceId(deviceId);
+      }
+
+      // Ambil token FCM yang terdaftar di Firebase
+      final fcmToken = await _fcmService.getFcmToken();
+      if (fcmToken == null || fcmToken.isEmpty) {
+        _logger.w('FCM Token is null, skipping registration.');
+        return;
+      }
+
+      final packageInfo = await PackageInfo.fromPlatform();
+      final appVersion = packageInfo.version;
+      final platformName = Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'Unknown');
+
+      _logger.i('Attempting to sync FCM token (isActive: $isActive) for user $userId...');
+      final success = await _deviceRepository.registerFcmToken(
+        userId: userId,
+        deviceId: deviceId,
+        fcmToken: fcmToken,
+        platform: platformName,
+        appVersion: appVersion,
+        isActive: isActive,
+      );
+
+      if (success) {
+        _logger.i('FCM Token sync success (isActive: $isActive).');
+      } else {
+        _logger.w('FCM Token sync failed on backend response.');
+      }
+    } catch (e) {
+      _logger.e('Failed to synchronize FCM token: $e');
     }
   }
 }

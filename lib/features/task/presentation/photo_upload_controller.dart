@@ -241,6 +241,19 @@ class PhotoUploadController extends StateNotifier<MultiPhotoUploadState> {
     return allSuccess;
   }
 
+  /// Menginisialisasi slot foto dari daftar foto yang sudah ada di server
+  void initializeFromExisting(List<String> existingPhotos) {
+    final List<PhotoSlotState> newSlots = [];
+    for (final path in existingPhotos) {
+      newSlots.add(PhotoSlotState(
+        status: UploadStatus.success,
+        remotePhotoPath: path,
+        localImagePath: path, // Gunakan path remote sebagai placeholder local
+      ));
+    }
+    state = MultiPhotoUploadState(slots: newSlots);
+  }
+
   /// Reset semua slot ke kondisi awal (idle)
   void reset() {
     state = state.reset();

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/exceptions/app_failure.dart';
 import '../../../core/network/dio_client.dart';
+import 'package:logger/logger.dart';
 
 final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
   final dioClient = ref.read(dioClientProvider);
@@ -75,6 +76,57 @@ class DeviceRepository {
       rethrow;
     } catch (e) {
       throw AppFailure.local('Gagal mendaftarkan perangkat: $e');
+    }
+  }
+
+  /// Mendaftarkan atau memperbarui FCM Token di database backend
+  Future<bool> registerFcmToken({
+    required int userId,
+    required String deviceId,
+    required String fcmToken,
+    required String platform,
+    required String appVersion,
+    int isActive = 1,
+  }) async {
+    final logger = Logger();
+    final url = AppConstants.pathRegisterFcmToken;
+    final payload = {
+      'user_id': userId,
+      'device_id': deviceId,
+      'fcm_token': fcmToken,
+      'platform': platform,
+      'app_version': appVersion,
+      'is_active': isActive,
+    };
+
+    logger.i("HTTP REQUEST:\n"
+        "URL: $url\n"
+        "Method: POST\n"
+        "Headers: Content-Type: application/json\n"
+        "Body: $payload");
+
+    try {
+      final response = await _dioClient.post(
+        url,
+        data: payload,
+      );
+
+      final data = response.data;
+      logger.i("HTTP RESPONSE:\n"
+          "Status Code: ${response.statusCode}\n"
+          "Headers: ${response.headers}\n"
+          "Body: $data");
+
+      if (data is Map<String, dynamic>) {
+        return data['success'] == true;
+      }
+      return false;
+    } on AppFailure catch (e) {
+      logger.e("HTTP RESPONSE FAILURE (AppFailure): ${e.message}");
+      rethrow;
+    } catch (e) {
+      logger.e("HTTP RESPONSE FAILURE (Exception): $e");
+      throw AppFailure.local('Gagal mensinkronisasikan FCM Token: $e');
     }
   }
 }

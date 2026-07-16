@@ -16,7 +16,8 @@ class AppConstants {
   static const String pathLogout = '/logout.php';
   static const String pathValidateDevice = '/Housekeeping/api_validate_device.php';
   static const String pathRegisterDevice = '/Housekeeping/api_register_device.php';
-  static const String pathRegister = '/api_register.php';
+  static const String pathRegisterFcmToken = '/Housekeeping/api_register_fcm_token.php';
+  static const String pathRegister = '/Housekeeping/api_register.php';
   static const String pathRegistrationStatus = '/api_registration_status.php';
 
   // Local Storage Keys

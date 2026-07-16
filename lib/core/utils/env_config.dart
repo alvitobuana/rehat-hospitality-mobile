@@ -29,11 +29,12 @@ class EnvConfig {
       _logger.i('✓ Environment "$environment" initialized. Base URL: $baseUrl');
     } catch (e) {
       // Fallback default jika file tidak ditemukan
-      baseUrl = 'http://localhost/qa_web_rehat';
-      environment = 'development';
-      debug = true;
+      baseUrl = 'https://rehathotelsindonesia.com';
+      environment = 'production';
+      debug = false;
       _logger.w('⚠ Failed to load environment config from path "$envPath". '
-          'Falling back to default. Error: $e');
+          'Falling back to production. Error: $e');
     }
   }
 }
+

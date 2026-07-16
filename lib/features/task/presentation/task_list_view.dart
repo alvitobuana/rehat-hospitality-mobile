@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/design_system/app_colors.dart';
+import '../../../core/design_system/app_insets.dart';
+import '../../../core/design_system/app_typography.dart';
+import '../../../shared/widgets/app_page.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../../../shared/widgets/task_card.dart';
@@ -12,14 +17,12 @@ class TaskListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final taskListAsync = ref.watch(taskListProvider);
-    final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Tugas'),
-        automaticallyImplyLeading: false,
-      ),
-      body: RefreshIndicator(
+    return AppPage(
+      title: 'Daftar Tugas',
+      useSafeArea: true,
+      scrollable: false,
+      child: RefreshIndicator(
         onRefresh: () async {
           await ref.read(taskListControllerProvider.notifier).refreshActiveTasks();
         },
@@ -40,7 +43,12 @@ class TaskListView extends ConsumerWidget {
 
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.only(
+                left: AppInsets.s20,
+                right: AppInsets.s20,
+                top: AppInsets.s20,
+                bottom: AppInsets.s20 + AppInsets.bottomSafe(context),
+              ),
               itemCount: tasks.length + 1,
               itemBuilder: (context, index) {
                 if (index == 0) {
@@ -63,23 +71,23 @@ class TaskListView extends ConsumerWidget {
           error: (err, _) => Center(
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(AppInsets.s24),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline_rounded, size: 48, color: theme.colorScheme.error),
-                  const SizedBox(height: 12),
+                  Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger(context)),
+                  const SizedBox(height: AppInsets.s12),
                   Text(
                     'Gagal memuat antrean tugas:\n$err',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.grey),
+                    style: AppTypography.caption(context),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
+                  const SizedBox(height: AppInsets.s16),
+                  AppPrimaryButton(
+                    text: 'Coba Lagi',
                     onPressed: () {
                       ref.read(taskListControllerProvider.notifier).loadActiveTasks();
                     },
-                    child: const Text('Coba Lagi'),
                   ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_empty_state.dart';
 
 /// Halaman visual untuk merender Empty State (tidak ada data, tidak ada tugas)
 class EmptyStateView extends StatelessWidget {
@@ -19,43 +20,12 @@ class EmptyStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 72,
-              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            if (actionText != null && onActionPressed != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: onActionPressed,
-                child: Text(actionText!),
-              ),
-            ],
-          ],
-        ),
-      ),
+    return AppEmptyState(
+      title: title,
+      message: message,
+      icon: icon,
+      actionText: actionText,
+      onActionPressed: onActionPressed,
     );
   }
 }

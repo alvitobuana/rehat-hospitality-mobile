@@ -109,10 +109,19 @@ class AttendanceController extends StateNotifier<AttendanceState> {
         throw AppFailure.local('Check-In ditolak oleh server.');
       }
     } on AppFailure catch (e) {
-      state = state.copyWith(status: AttendanceStatus.error, errorMessage: e.message);
-      // Revert ke status awal setelah memunculkan pesan error
-      await Future.delayed(const Duration(seconds: 2));
-      state = state.copyWith(status: AttendanceStatus.checkedOut);
+      if (e.code == 'ALREADY_CHECKED_IN') {
+        state = state.copyWith(
+          status: AttendanceStatus.success,
+          lastActionMessage: 'Sesi Kerja Aktif Dipulihkan.',
+        );
+        await Future.delayed(const Duration(seconds: 2));
+        state = state.copyWith(status: AttendanceStatus.checkedIn);
+      } else {
+        state = state.copyWith(status: AttendanceStatus.error, errorMessage: e.message);
+        // Revert ke status awal setelah memunculkan pesan error
+        await Future.delayed(const Duration(seconds: 2));
+        state = state.copyWith(status: AttendanceStatus.checkedOut);
+      }
     } catch (e) {
       state = state.copyWith(status: AttendanceStatus.error, errorMessage: 'Terjadi kesalahan: $e');
       await Future.delayed(const Duration(seconds: 2));
@@ -206,5 +215,17 @@ class AttendanceController extends StateNotifier<AttendanceState> {
   /// Reset manual error status
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  /// Memverifikasi status check-in terkini dari server
+  Future<void> checkCurrentAttendanceStatus() async {
+    try {
+      final isCheckedIn = await _attendanceRepository.getAttendanceStatus();
+      state = state.copyWith(
+        status: isCheckedIn ? AttendanceStatus.checkedIn : AttendanceStatus.checkedOut,
+      );
+    } catch (_) {
+      // Biarkan status default jika gagal request ke server
+    }
   }
 }

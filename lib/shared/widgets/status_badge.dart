@@ -23,6 +23,8 @@ class StatusBadge extends StatelessWidget {
       return const StatusBadge(label: 'In Progress', type: BadgeType.info);
     } else if (lowerStatus == 'dirty' || lowerStatus == 'pending') {
       return const StatusBadge(label: 'Dirty', type: BadgeType.danger);
+    } else if (lowerStatus == 'expired') {
+      return const StatusBadge(label: 'Expired', type: BadgeType.warning);
     }
     return StatusBadge(label: status, type: BadgeType.warning);
   }

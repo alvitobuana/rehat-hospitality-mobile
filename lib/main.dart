@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
@@ -6,6 +7,7 @@ import 'core/router/app_router.dart';
 import 'core/storage/session_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/env_config.dart';
+import 'services/firebase_messaging_service.dart';
 
 void main() async {
   // Menjamin framework Flutter terinisialisasi sebelum pemicuan operasi async
@@ -21,7 +23,13 @@ void main() async {
     final sessionManager = SessionManager();
     final dioClient = await DioClient.initialize(sessionManager);
 
-    logger.i('✓ Flutter Foundation Core (Sprint 1.1 Refined) initialization success.');
+    // 3. Menginisialisasi Firebase & Firebase Messaging Service
+    await Firebase.initializeApp();
+    final fcmService = FirebaseMessagingService();
+    fcmService.initialize(); // Run asynchronously to not block runApp and UI loading
+
+    logger.i('✓ Flutter Foundation Core (Sprint 1.1 Refined) with FCM initialization success.');
+
 
     runApp(
       ProviderScope(
@@ -30,6 +38,8 @@ void main() async {
           dioClientProvider.overrideWithValue(dioClient),
           // Meng-override provider SessionManager agar instance yang sama digunakan global
           sessionManagerProvider.overrideWithValue(sessionManager),
+          // Meng-override provider FirebaseMessagingService agar instance terinisialisasi digunakan global
+          firebaseMessagingServiceProvider.overrideWithValue(fcmService),
         ],
         child: const MyApp(),
       ),
