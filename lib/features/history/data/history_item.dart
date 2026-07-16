@@ -4,6 +4,7 @@ class HistoryItem {
   final int taskId;
   final String roomNumber;
   final String cleaningType;
+  final String status;
 
   /// Timestamp penyelesaian dari backend (format: "YYYY-MM-DD HH:mm:ss")
   final String completedAt;
@@ -13,6 +14,7 @@ class HistoryItem {
     required this.roomNumber,
     required this.cleaningType,
     required this.completedAt,
+    required this.status,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class HistoryItem {
       roomNumber: json['room_number'] as String? ?? '',
       cleaningType: json['cleaning_type'] as String? ?? '',
       completedAt: json['completed_at'] as String? ?? '',
+      status: json['status'] as String? ?? 'Completed',
     );
   }
 

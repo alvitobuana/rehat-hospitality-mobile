@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../core/design_system/app_colors.dart';
+import '../../../core/design_system/app_insets.dart';
+import '../../../core/design_system/app_typography.dart';
+import '../../../shared/widgets/app_page.dart';
+import '../../../shared/widgets/app_cards.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import 'auth_controller.dart';
 
@@ -37,64 +41,59 @@ class DeviceBindingScreen extends ConsumerWidget {
     return LoadingOverlay(
       isLoading: isLoading,
       message: 'Mendaftarkan perangkat...',
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Validasi Keamanan'),
-          automaticallyImplyLeading: false,
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AppCard(
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.phonelink_lock_rounded,
-                        size: 64,
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Device Binding Diperlukan',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 18,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Untuk mencegah kecurangan absensi, ID Karyawan Anda harus didaftarkan secara permanen pada perangkat ponsel ini.',
-                        style: TextStyle(height: 1.4),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      CustomButton(
-                        text: 'IKAT PERANGKAT SEKARANG',
-                        isLoading: isLoading,
-                        onPressed: () {
-                          ref.read(authControllerProvider.notifier).performDeviceBinding();
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () {
-                          ref.read(authControllerProvider.notifier).logout();
-                        },
-                        child: const Text(
-                          'Batalkan & Keluar Akun',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                    ],
+      child: AppPage(
+        title: 'Validasi Keamanan',
+        useSafeArea: true,
+        scrollable: true,
+        padding: AppInsets.page(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: AppInsets.s32),
+            AppCard(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.phonelink_lock_rounded,
+                    size: 64,
+                    color: AppColors.primary(context),
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppInsets.s16),
+                  Text(
+                    'Device Binding Diperlukan',
+                    style: AppTypography.title(context).copyWith(
+                      fontSize: 18,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppInsets.s12),
+                  const Text(
+                    'Untuk mencegah kecurangan absensi, ID Karyawan Anda harus didaftarkan secara permanen pada perangkat ponsel ini.',
+                    style: TextStyle(height: 1.4),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppInsets.s24),
+                  AppPrimaryButton(
+                    text: 'IKAT PERANGKAT SEKARANG',
+                    isLoading: isLoading,
+                    onPressed: () {
+                      ref.read(authControllerProvider.notifier).performDeviceBinding();
+                    },
+                  ),
+                  const SizedBox(height: AppInsets.s12),
+                  TextButton(
+                    onPressed: () {
+                      ref.read(authControllerProvider.notifier).logout();
+                    },
+                    child: const Text(
+                      'Batalkan & Keluar Akun',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

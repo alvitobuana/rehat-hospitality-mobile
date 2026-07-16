@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/location/location_service.dart';
-import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../core/design_system/app_colors.dart';
+import '../../../core/design_system/app_insets.dart';
+import '../../../core/design_system/app_typography.dart';
+import '../../../shared/widgets/app_page.dart';
+import '../../../shared/widgets/app_cards.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import 'auth_controller.dart';
 
@@ -91,19 +95,14 @@ class _GpsPermissionScreenState extends ConsumerState<GpsPermissionScreen> {
     return LoadingOverlay(
       isLoading: isLoading,
       message: 'Memeriksa izin lokasi...',
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Izin Lokasi'),
-          automaticallyImplyLeading: false,
-        ),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _buildCurrentView(theme, isLoading),
-            ),
-          ),
+      child: AppPage(
+        title: 'Izin Lokasi',
+        useSafeArea: true,
+        scrollable: true,
+        padding: AppInsets.page(context),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _buildCurrentView(theme, isLoading),
         ),
       ),
     );
@@ -136,12 +135,12 @@ class _GpsPermissionScreenState extends ConsumerState<GpsPermissionScreen> {
           'sesuai lokasi hotel.\n\n'
           'Lokasi Anda hanya digunakan saat absensi dan tidak disimpan di luar keperluan tersebut.',
       actions: [
-        CustomButton(
+        AppPrimaryButton(
           text: 'IZINKAN LOKASI',
           isLoading: isLoading,
           onPressed: () => ref.read(authControllerProvider.notifier).checkGpsPermission(),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppInsets.s12),
         _buildCancelButton(),
       ],
     );
@@ -160,12 +159,12 @@ class _GpsPermissionScreenState extends ConsumerState<GpsPermissionScreen> {
           'Akses lokasi diperlukan untuk menggunakan fitur absensi.\n\n'
           'Silakan izinkan akses lokasi agar dapat melakukan Check In dan Check Out.',
       actions: [
-        CustomButton(
+        AppPrimaryButton(
           text: 'COBA LAGI',
           isLoading: isLoading,
           onPressed: () => ref.read(authControllerProvider.notifier).checkGpsPermission(),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppInsets.s12),
         _buildCancelButton(),
       ],
     );
@@ -184,7 +183,7 @@ class _GpsPermissionScreenState extends ConsumerState<GpsPermissionScreen> {
           'Akses lokasi telah ditolak secara permanen. Untuk menggunakan fitur absensi, '
           'Anda perlu mengaktifkan izin lokasi secara manual melalui pengaturan aplikasi.',
       actions: [
-        CustomButton(
+        AppPrimaryButton(
           text: 'BUKA PENGATURAN',
           onPressed: () async {
             await ref.read(locationServiceProvider).openAppSettings();
@@ -195,7 +194,7 @@ class _GpsPermissionScreenState extends ConsumerState<GpsPermissionScreen> {
             }
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppInsets.s12),
         _buildCancelButton(),
       ],
     );
@@ -214,7 +213,7 @@ class _GpsPermissionScreenState extends ConsumerState<GpsPermissionScreen> {
           'Layanan GPS perangkat Anda tidak aktif. Aktifkan GPS untuk dapat '
           'melakukan absensi berdasarkan lokasi hotel.',
       actions: [
-        CustomButton(
+        AppPrimaryButton(
           text: 'AKTIFKAN GPS',
           onPressed: () async {
             await ref.read(locationServiceProvider).openLocationSettings();
@@ -225,7 +224,7 @@ class _GpsPermissionScreenState extends ConsumerState<GpsPermissionScreen> {
             }
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppInsets.s12),
         _buildCancelButton(),
       ],
     );
@@ -277,24 +276,25 @@ class _PermissionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Icon(icon, size: 72, color: iconColor),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppInsets.s20),
                   Text(
                     title,
-                    style: theme.textTheme.titleLarge?.copyWith(
+                    style: AppTypography.title(context).copyWith(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppInsets.s12),
                   Text(
                     description,
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    style: AppTypography.body(context).copyWith(
                       height: 1.5,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppInsets.s24),
                   ...actions,
                 ],
               ),

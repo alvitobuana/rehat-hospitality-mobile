@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "557485365674",
+    "project_id": "rehat-employee-mobile",
+    "storage_bucket": "rehat-employee-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:557485365674:android:4440be2b5553bee8d673d3",
+        "android_client_info": {
+          "package_name": "com.rehat.rehat_hk_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFo9Rs4oPsgsSeMz_-dbs5wn4_5eADIoE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

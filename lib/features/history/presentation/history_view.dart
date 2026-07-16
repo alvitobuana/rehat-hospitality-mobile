@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/app_card.dart';
+import '../../../core/design_system/app_insets.dart';
+import '../../../shared/widgets/app_page.dart';
+import '../../../shared/widgets/app_cards.dart';
+import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
-import '../../../shared/widgets/state_widgets.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../data/history_item.dart';
 import 'history_controller.dart';
@@ -15,16 +17,21 @@ class HistoryView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final historyAsync = ref.watch(historyListProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Riwayat Aktivitas'),
-        automaticallyImplyLeading: false,
-      ),
-      body: historyAsync.when(
+    return AppPage(
+      title: 'Riwayat Aktivitas',
+      useSafeArea: true,
+      scrollable: false,
+      padding: EdgeInsets.zero, // Padding is managed by ListView for scroll boundaries
+      child: historyAsync.when(
         // ----------------------------------------------------------------
         // Loading State
         // ----------------------------------------------------------------
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(AppInsets.s24),
+            child: CircularProgressIndicator(),
+          ),
+        ),
 
         // ----------------------------------------------------------------
         // Error State
@@ -33,7 +40,7 @@ class HistoryView extends ConsumerWidget {
           final isSession = err.toString().contains('SESSION_EXPIRED') ||
               err.toString().contains('Sesi berakhir');
           return Center(
-            child: ErrorStateView(
+            child: AppEmptyState(
               title: isSession ? 'Sesi Berakhir' : 'Gagal Memuat Riwayat',
               message: isSession
                   ? 'Silakan masuk kembali ke aplikasi.'
@@ -41,7 +48,8 @@ class HistoryView extends ConsumerWidget {
               icon: isSession
                   ? Icons.lock_outline_rounded
                   : Icons.wifi_off_rounded,
-              onRetryPressed: () {
+              actionText: 'Coba Lagi',
+              onActionPressed: () {
                 ref.read(historyControllerProvider.notifier).loadHistory();
               },
             ),
@@ -59,11 +67,10 @@ class HistoryView extends ConsumerWidget {
             child: history.isEmpty
                 // ---- Empty State ----
                 ? ListView(
-                    // Diperlukan agar RefreshIndicator bekerja meski kosong
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: const [
                       SizedBox(height: 80),
-                      EmptyStateView(
+                      AppEmptyState(
                         title: 'Riwayat Masih Kosong',
                         message:
                             'Anda belum menyelesaikan tugas kamar apa pun.\nSelesaikan tugas untuk melihat riwayat di sini.',
@@ -74,16 +81,19 @@ class HistoryView extends ConsumerWidget {
                 // ---- List State ----
                 : ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20.0, vertical: 8.0),
+                    padding: EdgeInsets.only(
+                        left: AppInsets.s20,
+                        right: AppInsets.s20,
+                        top: AppInsets.s8,
+                        bottom: AppInsets.s8 + AppInsets.bottomSafe(context)),
                     itemCount: history.length + 1,
                     itemBuilder: (context, index) {
                       // Header
                       if (index == 0) {
                         return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
+                          padding: const EdgeInsets.only(top: AppInsets.s8),
                           child: SectionHeader(
-                            title: 'Tugas Selesai (${history.length})',
+                            title: 'Riwayat Tugas (${history.length})',
                           ),
                         );
                       }
@@ -110,6 +120,12 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isExpired = item.status.toLowerCase() == 'expired';
+    final leadingBg = isExpired ? Colors.orange.shade50 : Colors.green.shade50;
+    final leadingBorder = isExpired ? Colors.orange.shade200 : Colors.green.shade200;
+    final leadingIcon = isExpired ? Icons.info_outline_rounded : Icons.check_circle_rounded;
+    final leadingIconColor = isExpired ? Colors.orange.shade400 : Colors.green.shade400;
+
     return AppCard(
       onTap: () {
         // Navigate ke Task Detail untuk melihat detail tugas selesai
@@ -118,18 +134,18 @@ class _HistoryCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ---- Foto Placeholder (backend belum mengembalikan photo_path di history) ----
+          // ---- Icon Leading dynamic based on status ----
           Container(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: Colors.green.shade50,
+              color: leadingBg,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green.shade200, width: 1),
+              border: Border.all(color: leadingBorder, width: 1),
             ),
             child: Icon(
-              Icons.check_circle_rounded,
-              color: Colors.green.shade400,
+              leadingIcon,
+              color: leadingIconColor,
               size: 28,
             ),
           ),
@@ -151,7 +167,7 @@ class _HistoryCard extends StatelessWidget {
                         fontSize: 15,
                       ),
                     ),
-                    StatusBadge.fromStatusString('Completed'),
+                    StatusBadge.fromStatusString(item.status),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -163,14 +179,14 @@ class _HistoryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
 
-                // Tanggal Selesai
+                // Tanggal Selesai / Kadaluarsa
                 Row(
                   children: [
                     const Icon(Icons.access_time_rounded,
                         size: 12, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(
-                      'Selesai: ${item.formattedDate}',
+                      isExpired ? 'Kadaluarsa: ${item.formattedDate}' : 'Selesai: ${item.formattedDate}',
                       style: const TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],

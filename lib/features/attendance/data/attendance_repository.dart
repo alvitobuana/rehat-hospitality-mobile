@@ -40,16 +40,28 @@ class AttendanceRepository {
         if (data['success'] == true) {
           return true;
         } else {
-          throw AppFailure.local(data['message'] ?? 'Check-In ditolak.', 'CHECKIN_REJECTED');
+          throw AppFailure.local(data['message'] ?? 'Check-In ditolak.', data['code'] ?? 'CHECKIN_REJECTED');
         }
       }
       throw AppFailure.local('Format respon server tidak valid.', 'INVALID_RESPONSE');
     } on AppFailure {
       rethrow;
+    } on DioException catch (e) {
+      // Baca pesan dari response body HTTP 400/403 dll
+      final res = e.response;
+      if (res != null && res.data is Map<String, dynamic>) {
+        final resData = res.data as Map<String, dynamic>;
+        throw AppFailure.local(
+          resData['message'] ?? 'Check-In ditolak oleh server.',
+          resData['code']    ?? 'CHECKIN_REJECTED',
+        );
+      }
+      throw AppFailure.local('Kesalahan jaringan: ${e.message}');
     } catch (e) {
       throw AppFailure.local('Gagal mengirim data Check-In: $e');
     }
   }
+
 
   /// Mengirim data verifikasi Check Out lokasi staf ke server
   ///
@@ -57,8 +69,8 @@ class AttendanceRepository {
   /// respon 422 INCOMPLETE_TASKS.
   Future<bool> checkOut({
     required int userId,
-    required double latitude,
-    required double longitude,
+    double? latitude,
+    double? longitude,
     required String deviceId,
     bool confirmIncomplete = false,
   }) async {
@@ -114,5 +126,33 @@ class AttendanceRepository {
     } catch (e) {
       throw AppFailure.local('Gagal mengirim data Check-Out: $e');
     }
+  }
+
+  /// Mengambil waktu server (WIB) terkini
+  Future<String?> getServerTime() async {
+    try {
+      final response = await _dioClient.get('/Housekeeping/api_server_time.php');
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['success'] == true) {
+        return data['server_time'] as String?;
+      }
+    } catch (e) {
+      _logger.e('Gagal mendapatkan waktu server: $e');
+    }
+    return null;
+  }
+
+  /// Mengambil status check-in aktif staf dari server
+  Future<bool> getAttendanceStatus() async {
+    try {
+      final response = await _dioClient.get('/Housekeeping/api_get_attendance_status.php');
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['success'] == true) {
+        return data['is_checked_in'] == true;
+      }
+    } catch (e) {
+      _logger.e('Gagal mendapatkan status absensi dari server: $e');
+    }
+    return false;
   }
 }

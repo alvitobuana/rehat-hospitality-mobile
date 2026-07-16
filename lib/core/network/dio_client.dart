@@ -164,6 +164,12 @@ class SessionInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    // KECUALIKAN endpoint registrasi dari pengiriman session cookie
+    if (options.path.contains('api_register.php')) {
+      handler.next(options);
+      return;
+    }
+
     final phpSessionId = await _sessionManager.getPhpSessionId();
     if (phpSessionId != null && phpSessionId.isNotEmpty) {
       options.headers['Cookie'] = 'PHPSESSID=$phpSessionId';

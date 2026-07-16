@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../features/attendance/presentation/attendance_controller.dart';
-import 'app_card.dart';
-import 'custom_button.dart';
+import 'app_cards.dart';
+import 'app_buttons.dart';
 import 'status_badge.dart';
 
 /// Reusable Card untuk merender kontrol Absensi GPS karyawan.
@@ -50,16 +50,15 @@ class AttendanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (!isCheckedIn)
-            CustomButton(
+            AppPrimaryButton(
               text: 'CHECK IN (MULAI KERJA)',
               backgroundColor: Colors.green,
               icon: const Icon(Icons.login_rounded, color: Colors.white, size: 18),
               onPressed: onCheckIn,
             )
           else
-            CustomButton(
+            AppDangerButton(
               text: 'CHECK OUT (SELESAI KERJA)',
-              backgroundColor: Colors.red,
               icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
               onPressed: onCheckOut,
             ),

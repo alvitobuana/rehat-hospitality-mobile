@@ -109,10 +109,19 @@ class AttendanceController extends StateNotifier<AttendanceState> {
         throw AppFailure.local('Check-In ditolak oleh server.');
       }
     } on AppFailure catch (e) {
-      state = state.copyWith(status: AttendanceStatus.error, errorMessage: e.message);
-      // Revert ke status awal setelah memunculkan pesan error
-      await Future.delayed(const Duration(seconds: 2));
-      state = state.copyWith(status: AttendanceStatus.checkedOut);
+      if (e.code == 'ALREADY_CHECKED_IN') {
+        state = state.copyWith(
+          status: AttendanceStatus.success,
+          lastActionMessage: 'Sesi Kerja Aktif Dipulihkan.',
+        );
+        await Future.delayed(const Duration(seconds: 2));
+        state = state.copyWith(status: AttendanceStatus.checkedIn);
+      } else {
+        state = state.copyWith(status: AttendanceStatus.error, errorMessage: e.message);
+        // Revert ke status awal setelah memunculkan pesan error
+        await Future.delayed(const Duration(seconds: 2));
+        state = state.copyWith(status: AttendanceStatus.checkedOut);
+      }
     } catch (e) {
       state = state.copyWith(status: AttendanceStatus.error, errorMessage: 'Terjadi kesalahan: $e');
       await Future.delayed(const Duration(seconds: 2));
@@ -135,18 +144,22 @@ class AttendanceController extends StateNotifier<AttendanceState> {
       // 2. Dapatkan parameter hardware
       final device = await _deviceService.getDeviceInfo();
 
-      // 3. Cek keaktifan GPS
-      final gpsEnabled = await _locationService.isLocationEnabled();
-      if (!gpsEnabled) {
-        throw AppFailure.local('GPS Anda tidak aktif. Mohon hidupkan GPS ponsel.', 'GPS_OFF');
+      // 3. Ambil koordinat GPS (opsional untuk Check Out)
+      double? lat;
+      double? lng;
+      try {
+        final gpsEnabled = await _locationService.isLocationEnabled();
+        if (gpsEnabled) {
+          final coords = await _locationService.getCurrentLocation();
+          lat = coords['latitude'];
+          lng = coords['longitude'];
+        }
+      } catch (e) {
+        // Lokasi gagal diambil, biarkan lat/lng bernilai null dan jangan lempar exception
+        print('Gagal mengambil lokasi GPS saat Check-Out: $e. Melanjutkan Check-Out tanpa koordinat.');
       }
 
-      // 4. Ambil koordinat GPS
-      final coords = await _locationService.getCurrentLocation();
-      final lat = coords['latitude']!;
-      final lng = coords['longitude']!;
-
-      // 5. Kirim ke server
+      // 4. Kirim ke server
       final success = await _attendanceRepository.checkOut(
         userId: userId,
         latitude: lat,
@@ -202,5 +215,17 @@ class AttendanceController extends StateNotifier<AttendanceState> {
   /// Reset manual error status
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  /// Memverifikasi status check-in terkini dari server
+  Future<void> checkCurrentAttendanceStatus() async {
+    try {
+      final isCheckedIn = await _attendanceRepository.getAttendanceStatus();
+      state = state.copyWith(
+        status: isCheckedIn ? AttendanceStatus.checkedIn : AttendanceStatus.checkedOut,
+      );
+    } catch (_) {
+      // Biarkan status default jika gagal request ke server
+    }
   }
 }

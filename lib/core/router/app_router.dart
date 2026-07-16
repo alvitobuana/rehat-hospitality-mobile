@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import '../../features/auth/presentation/gps_permission_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/registration_success_screen.dart';
+import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/task/presentation/take_photo_screen.dart';
 import '../../features/task/presentation/task_detail_screen.dart';
 
@@ -73,6 +75,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return TakePhotoScreen(taskId: id);
         },
       ),
+      GoRoute(
+        path: '/edit-profile',
+        name: 'edit-profile',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
     ],
     errorBuilder: (context, state) => Scaffold(
       body: Center(
@@ -82,7 +89,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Halaman Splash Screen Utama yang mendeteksi auto-login session
+/// Halaman Splash Screen Utama yang mendeteksi auto-login session dengan Timeout
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -91,13 +98,55 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  Timer? _timeoutTimer;
+  bool _isTimeout = false;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
-    // Membaca ulang status login saat widget dimasukkan ke tree
+    _startTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authControllerProvider.notifier).checkAutoLogin();
+      _checkLogin();
     });
+  }
+
+  void _startTimer() {
+    _timeoutTimer?.cancel();
+    setState(() {
+      _isTimeout = false;
+      _errorMessage = null;
+    });
+    // Set batas loading maksimal 5 detik sebelum menampilkan halaman error/timeout
+    _timeoutTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _isTimeout = true;
+          _errorMessage = 'Koneksi lambat atau server tidak merespons. Silakan periksa jaringan internet Anda.';
+        });
+      }
+    });
+  }
+
+  Future<void> _checkLogin() async {
+    try {
+      await ref.read(authControllerProvider.notifier).checkAutoLogin();
+      _timeoutTimer?.cancel();
+    } catch (e) {
+      _timeoutTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _isTimeout = true;
+          _errorMessage = 'Terjadi kesalahan saat menghubungkan: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -105,15 +154,71 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Mendengarkan perubahan status otentikasi di splash screen untuk navigasi otomatis
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
       if (next.status == AuthStatus.unauthenticated) {
+        _timeoutTimer?.cancel();
         context.go('/login');
       } else if (next.status == AuthStatus.deviceBindingRequired) {
+        _timeoutTimer?.cancel();
         context.go('/device-binding');
       } else if (next.status == AuthStatus.locationPermissionRequired) {
+        _timeoutTimer?.cancel();
         context.go('/gps-permission');
       } else if (next.status == AuthStatus.authenticated) {
+        _timeoutTimer?.cancel();
         context.go('/dashboard');
       }
     });
+
+    if (_isTimeout) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.wifi_off_rounded,
+                  color: Colors.redAccent,
+                  size: 64,
+                ),
+                const SizedBox(height: 24),
+                Image.asset(
+                  'assets/logo.png',
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  _errorMessage ?? 'Koneksi ke server hotel terputus.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _startTimer();
+                    _checkLogin();
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Coba Lagi'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    _timeoutTimer?.cancel();
+                    context.go('/login');
+                  },
+                  child: const Text('Masuk Secara Manual'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: Center(
@@ -139,3 +244,4 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     );
   }
 }
+

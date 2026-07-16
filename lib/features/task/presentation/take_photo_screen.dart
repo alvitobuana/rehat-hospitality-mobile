@@ -4,13 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../core/design_system/app_colors.dart';
+import '../../../core/design_system/app_insets.dart';
+import '../../../core/design_system/app_typography.dart';
+import '../../../shared/widgets/app_page.dart';
+import '../../../shared/widgets/app_cards.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../data/photo_upload_repository.dart';
 import 'photo_upload_controller.dart';
 import 'task_detail_controller.dart';
+import 'task_list_controller.dart';
 import '../../attendance/presentation/attendance_controller.dart';
+import '../../attendance/presentation/dashboard_controller.dart';
+import '../../../core/utils/env_config.dart';
 
 class TakePhotoScreen extends ConsumerStatefulWidget {
   /// Menerima taskId sebagai integer untuk kompatibilitas dengan backend
@@ -35,9 +42,21 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
   @override
   void initState() {
     super.initState();
-    // Langsung buka dialog rationale → kamera untuk foto pertama
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndRequestCameraPermission();
+      _initializeExistingPhotos();
+    });
+  }
+
+  void _initializeExistingPhotos() {
+    final taskDetailAsync = ref.read(taskDetailProvider(widget.taskId));
+    taskDetailAsync.whenData((detail) {
+      if (detail.photos.isNotEmpty) {
+        ref
+            .read(photoUploadControllerProvider(widget.taskId).notifier)
+            .initializeFromExisting(detail.photos);
+      } else {
+        _checkAndRequestCameraPermission();
+      }
     });
   }
 
@@ -61,7 +80,7 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
       builder: (ctx) {
         final theme = Theme.of(ctx);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppInsets.r12)),
           icon: Icon(Icons.camera_alt_rounded, size: 48, color: theme.colorScheme.primary),
           title: const Text('Izin Kamera Diperlukan', textAlign: TextAlign.center),
           content: const Text(
@@ -92,7 +111,7 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
       builder: (ctx) {
         final theme = Theme.of(ctx);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppInsets.r12)),
           icon: Icon(Icons.no_photography_rounded, size: 48, color: theme.colorScheme.error),
           title: const Text('Kamera Tidak Bisa Diakses', textAlign: TextAlign.center),
           content: const Text(
@@ -124,7 +143,7 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppInsets.r12)),
         icon: const Icon(Icons.camera_alt_outlined, size: 48, color: Colors.orange),
         title: const Text('Izin Kamera Ditolak', textAlign: TextAlign.center),
         content: const Text(
@@ -234,42 +253,118 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
     final isAttendanceActive = attendanceState.status == AttendanceStatus.checkedIn;
     
     if (!isAttendanceActive) {
-      _showError('Akses ditolak. Sesi absensi Anda tidak aktif. Silakan Check-In terlebih dahulu.');
+      _showError('Akses ditolak. Sesi kerja Anda tidak aktif. Silakan Check-In terlebih dahulu.');
       return;
     }
 
     final uploadState = ref.read(photoUploadProvider(widget.taskId));
 
-    if (!uploadState.hasAnyPhoto) {
-      _showError('Minimal 1 foto bukti wajib diambil sebelum menyimpan.');
+    if (uploadState.photoCount < 3) {
+      _showError('Wajib mengambil 3 foto bukti sebelum menyimpan.');
       return;
     }
 
     if (uploadState.isUploading) return;
 
-    final allSuccess = await ref
-        .read(photoUploadControllerProvider(widget.taskId).notifier)
-        .uploadAllPhotos(taskId: widget.taskId);
+    bool allSuccess = false;
+    try {
+      allSuccess = await ref
+          .read(photoUploadControllerProvider(widget.taskId).notifier)
+          .uploadAllPhotos(taskId: widget.taskId);
+    } catch (e) {
+      if (e.toString().contains('Task telah berakhir')) {
+        _showExpiredDialog();
+        return;
+      }
+    }
 
     if (!mounted) return;
+
+    final uploadStateAfter = ref.read(photoUploadProvider(widget.taskId));
+    final hasExpiredError = uploadStateAfter.slots.any(
+      (s) => s.errorMessage != null && s.errorMessage!.contains('Task telah berakhir')
+    );
+
+    if (hasExpiredError) {
+      _showExpiredDialog();
+      return;
+    }
 
     if (allSuccess) {
       _showSuccess('✓ Semua foto bukti berhasil diunggah!');
 
-      // Update status tugas menjadi 'Completed'
-      await ref
-          .read(taskDetailControllerProvider(widget.taskId).notifier)
-          .updateStatus('Completed');
+      final taskDetail = ref.read(taskDetailProvider(widget.taskId)).valueOrNull;
+      final totalPhotos = ref.read(photoUploadProvider(widget.taskId)).photoCount;
+      final isChecklistComplete = taskDetail?.isChecklistComplete ?? false;
+
+      if (totalPhotos >= 3 && isChecklistComplete) {
+        // Update status tugas menjadi 'Completed'
+        try {
+          await ref
+              .read(taskDetailControllerProvider(widget.taskId).notifier)
+              .updateStatus('Completed');
+          _showSuccess('✓ Tugas berhasil diselesaikan!');
+        } catch (e) {
+          if (e.toString().contains('Task telah berakhir')) {
+            _showExpiredDialog();
+            return;
+          }
+          _showError('Gagal menyelesaikan tugas.');
+        }
+      } else {
+        String msg = '✓ Bukti foto disimpan. Progres: $totalPhotos/3 foto.';
+        if (!isChecklistComplete) {
+          msg += ' Selesaikan semua checklist untuk menyelesaikan tugas.';
+        }
+        _showSuccess(msg);
+      }
 
       // Refresh task detail agar data sinkron dengan backend
-      await ref
-          .read(taskDetailControllerProvider(widget.taskId).notifier)
-          .refreshTaskDetail();
+      try {
+        await ref
+            .read(taskDetailControllerProvider(widget.taskId).notifier)
+            .refreshTaskDetail();
+      } catch (_) {}
 
       if (!mounted) return;
       context.go('/dashboard');
     } else {
       _showError('Beberapa foto gagal diunggah. Cek koneksi dan coba lagi.');
+    }
+  }
+
+  void _showExpiredDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppInsets.r12)),
+          title: const Text('Task Berakhir'),
+          content: const Text(
+            'Task ini telah berakhir karena pergantian hari dan tidak dapat diubah lagi.\n\n'
+            'Silakan hubungi Admin apabila diperlukan.'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _handleExpiredAction();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _handleExpiredAction() {
+    ref.invalidate(dashboardControllerProvider);
+    ref.invalidate(taskListControllerProvider);
+    if (mounted) {
+      context.go('/dashboard');
     }
   }
 
@@ -357,227 +452,223 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
     final theme = Theme.of(context);
     final maxPhotos = PhotoUploadRepository.maxPhotosPerTask;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Foto Bukti Penyelesaian'),
-        actions: [
-          if (uploadState.hasAnyPhoto && !uploadState.isUploading && !uploadState.allUploaded)
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: 'Reset semua foto',
-              onPressed: () {
-                ref
-                    .read(photoUploadControllerProvider(widget.taskId).notifier)
-                    .reset();
-                _openCamera();
-              },
-            ),
-        ],
+    final appPageActions = [
+      if (uploadState.hasAnyPhoto && !uploadState.isUploading && !uploadState.allUploaded)
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded),
+          tooltip: 'Reset semua foto',
+          onPressed: () {
+            ref
+                .read(photoUploadControllerProvider(widget.taskId).notifier)
+                .reset();
+            _openCamera();
+          },
+        ),
+    ];
+
+    return AppPage(
+      title: 'Foto Bukti Penyelesaian',
+      useSafeArea: true,
+      scrollable: true,
+      actions: appPageActions,
+      padding: EdgeInsets.only(
+        left: AppInsets.s24,
+        right: AppInsets.s24,
+        top: AppInsets.s24,
+        bottom: AppInsets.s24 + AppInsets.bottomSafe(context),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ----------------------------------------------------------------
-            // Header Info
-            // ----------------------------------------------------------------
-            const SectionHeader(title: 'Foto Bukti Pekerjaan'),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, size: 16, color: theme.colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Ambil minimal 1 foto, maksimal $maxPhotos foto sebagai bukti penyelesaian.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ----------------------------------------------------------------
+          // Header Info
+          // ----------------------------------------------------------------
+          const SectionHeader(title: 'Foto Bukti Pekerjaan'),
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppInsets.s12),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 16, color: theme.colorScheme.primary),
+                const SizedBox(width: AppInsets.s8),
+                Expanded(
+                  child: Text(
+                    'Wajib mengunggah 3 foto bukti sebagai syarat penyelesaian tugas.',
+                    style: AppTypography.caption(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ----------------------------------------------------------------
+          // Multi-Photo Grid
+          // ----------------------------------------------------------------
+          AppCard(
+            child: Column(
+              children: [
+                // Progress count
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${uploadState.photoCount} dari $maxPhotos foto dipilih',
+                      style: AppTypography.body(context).copyWith(
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ----------------------------------------------------------------
-            // Multi-Photo Grid
-            // ----------------------------------------------------------------
-            AppCard(
-              child: Column(
-                children: [
-                  // Progress count
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${uploadState.photoCount} dari $maxPhotos foto dipilih',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (uploadState.allUploaded)
-                        Row(
-                          children: [
-                            const Icon(Icons.check_circle_rounded,
-                                color: Colors.green, size: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Semua terupload',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Grid slot foto
-                  Row(
-                    children: List.generate(maxPhotos, (index) {
-                      return Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(right: index < maxPhotos - 1 ? 8.0 : 0.0),
-                          child: _buildPhotoSlot(context, uploadState, index),
-                        ),
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
-
-            // ----------------------------------------------------------------
-            // Upload Progress Cards (per slot yang sedang upload)
-            // ----------------------------------------------------------------
-            ...List.generate(uploadState.slots.length, (i) {
-              final slot = uploadState.slots[i];
-              if (!slot.isUploading) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    if (uploadState.allUploaded)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          const Icon(Icons.check_circle_rounded,
+                              color: Colors.green, size: 16),
+                          const SizedBox(width: 4),
                           Text(
-                            'Mengunggah foto ${i + 1}...',
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
-                          ),
-                          Text(
-                            '${((slot.uploadProgress ?? 0) * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                            'Semua terupload',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: slot.uploadProgress,
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
-              );
-            }),
+                const SizedBox(height: AppInsets.s12),
 
-            // ----------------------------------------------------------------
-            // Error cards per slot
-            // ----------------------------------------------------------------
-            ...List.generate(uploadState.slots.length, (i) {
-              final slot = uploadState.slots[i];
-              if (!slot.isError || slot.errorMessage == null) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: AppCard(
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline_rounded,
-                          color: Colors.red.shade700, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Foto ${i + 1}: ${slot.errorMessage}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.red.shade700,
+                // Grid slot foto
+                Row(
+                  children: List.generate(maxPhotos, (index) {
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: index < maxPhotos - 1 ? 8.0 : 0.0),
+                        child: _buildPhotoSlot(context, uploadState, index),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+
+          // ----------------------------------------------------------------
+          // Upload Progress Cards (per slot yang sedang upload)
+          // ----------------------------------------------------------------
+          ...List.generate(uploadState.slots.length, (i) {
+            final slot = uploadState.slots[i];
+            if (!slot.isUploading) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: AppInsets.s8),
+              child: AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Mengunggah foto ${i + 1}...',
+                          style: const TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                        Text(
+                          '${((slot.uploadProgress ?? 0) * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () => _showPickSourceSheet(replaceIndex: i),
-                        child: const Text('Ganti', style: TextStyle(fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-
-            const SizedBox(height: 16),
-
-            // ----------------------------------------------------------------
-            // Tombol Tambah Foto (tampil jika masih bisa tambah)
-            // ----------------------------------------------------------------
-            if (uploadState.canAddMore && !uploadState.isUploading && !uploadState.allUploaded)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: OutlinedButton.icon(
-                  onPressed: () => _showPickSourceSheet(),
-                  icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                  label: Text(
-                    uploadState.photoCount == 0
-                        ? 'Ambil Foto Pertama'
-                        : 'Tambah Foto (${uploadState.photoCount}/$maxPhotos)',
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
-                  ),
+                      ],
+                    ),
+                    const SizedBox(height: AppInsets.s8),
+                    LinearProgressIndicator(
+                      value: slot.uploadProgress,
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ],
                 ),
               ),
+            );
+          }),
 
-            // ----------------------------------------------------------------
-            // Tombol Utama Submit
-            // ----------------------------------------------------------------
-            CustomButton(
-              text: uploadState.allUploaded
-                  ? '✓ SEMUA FOTO BERHASIL DIUNGGAH'
-                  : uploadState.isUploading
-                      ? 'Mengunggah...'
-                      : 'SIMPAN & SELESAIKAN TUGAS',
-              backgroundColor: uploadState.allUploaded
-                  ? Colors.grey
-                  : uploadState.isUploading
-                      ? Colors.blueGrey
-                      : Colors.green.shade700,
-              icon: uploadState.allUploaded
-                  ? const Icon(Icons.check_circle_outline_rounded,
-                      color: Colors.white, size: 18)
-                  : (!uploadState.isUploading && uploadState.hasAnyPhoto)
-                      ? const Icon(Icons.upload_rounded, color: Colors.white, size: 18)
-                      : null,
-              isLoading: uploadState.isUploading,
-              onPressed: (uploadState.isUploading ||
-                      uploadState.allUploaded ||
-                      !uploadState.hasAnyPhoto)
-                  ? null
-                  : _onSubmitPressed,
+          // ----------------------------------------------------------------
+          // Error cards per slot
+          // ----------------------------------------------------------------
+          ...List.generate(uploadState.slots.length, (i) {
+            final slot = uploadState.slots[i];
+            if (!slot.isError || slot.errorMessage == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: AppInsets.s8),
+              child: AppCard(
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        color: AppColors.danger(context), size: 18),
+                    const SizedBox(width: AppInsets.s8),
+                    Expanded(
+                      child: Text(
+                        'Foto ${i + 1}: ${slot.errorMessage}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.danger(context),
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => _showPickSourceSheet(replaceIndex: i),
+                      child: const Text('Ganti', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+          const SizedBox(height: AppInsets.s16),
+
+          // ----------------------------------------------------------------
+          // Tombol Tambah Foto (tampil jika masih bisa tambah)
+          // ----------------------------------------------------------------
+          if (uploadState.canAddMore && !uploadState.isUploading && !uploadState.allUploaded)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppInsets.s12),
+              child: AppOutlineButton(
+                onPressed: () => _showPickSourceSheet(),
+                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                text: uploadState.photoCount == 0
+                    ? 'Ambil Foto Pertama'
+                    : 'Tambah Foto (${uploadState.photoCount}/$maxPhotos)',
+              ),
             ),
-          ],
-        ),
+
+          // ----------------------------------------------------------------
+          // Tombol Utama Submit
+          // ----------------------------------------------------------------
+          AppPrimaryButton(
+            text: uploadState.allUploaded
+                ? '✓ SEMUA FOTO BERHASIL DIUNGGAH'
+                : uploadState.isUploading
+                    ? 'Mengunggah...'
+                    : 'SIMPAN & SELESAIKAN TUGAS',
+            backgroundColor: uploadState.allUploaded
+                ? Colors.grey
+                : uploadState.isUploading
+                    ? Colors.blueGrey
+                    : Colors.green.shade700,
+            icon: uploadState.allUploaded
+                ? const Icon(Icons.check_circle_outline_rounded,
+                    color: Colors.white, size: 18)
+                : (!uploadState.isUploading && uploadState.hasAnyPhoto)
+                    ? const Icon(Icons.upload_rounded, color: Colors.white, size: 18)
+                    : null,
+            isLoading: uploadState.isUploading,
+            onPressed: (uploadState.isUploading ||
+                    uploadState.allUploaded ||
+                    !uploadState.hasAnyPhoto)
+                ? null
+                : _onSubmitPressed,
+          ),
+        ],
       ),
     );
   }
@@ -629,15 +720,25 @@ class _TakePhotoScreenState extends ConsumerState<TakePhotoScreen> {
       fit: StackFit.expand,
       children: [
         // Foto preview
-        Image.file(
-          File(slot.localImagePath!),
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.broken_image_outlined,
-            size: 32,
-            color: Colors.grey,
-          ),
-        ),
+        slot.remotePhotoPath != null && slot.remotePhotoPath!.startsWith('uploads/')
+            ? Image.network(
+                '${EnvConfig.baseUrl}/${slot.remotePhotoPath}',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.broken_image_outlined,
+                  size: 32,
+                  color: Colors.grey,
+                ),
+              )
+            : Image.file(
+                File(slot.localImagePath!),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.broken_image_outlined,
+                  size: 32,
+                  color: Colors.grey,
+                ),
+              ),
 
         // Overlay status
         if (slot.isUploading)
