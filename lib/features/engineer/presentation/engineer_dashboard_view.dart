@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/design_system/app_insets.dart';
 import '../../../core/exceptions/app_failure.dart';
-import '../../../shared/widgets/app_page.dart';
 import '../data/engineer_repository.dart';
 import 'widgets/sla_countdown_widget.dart';
 
@@ -18,39 +17,37 @@ class EngineerDashboardView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reportsAsync = ref.watch(engineerReportsProvider);
 
-    return AppPage(
-      title: 'Laporan Kerusakan',
-      useSafeArea: true,
-      child: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(engineerReportsProvider),
-        child: reportsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => _ErrorView(
-            message: err is AppFailure ? err.message : err.toString(),
-            onRetry: () => ref.invalidate(engineerReportsProvider),
-          ),
-          data: (reports) {
-            // Tampilkan semua laporan NEW atau OPEN yang bisa diklaim engineer
-            final newReports = reports.where((r) => 
-                r['status'] == 'NEW' || r['status'] == 'OPEN'
-            ).toList();
-            if (newReports.isEmpty) {
-              return _EmptyView(message: 'Tidak ada laporan kerusakan baru.\nSemua beres!');
-            }
-            return ListView.separated(
-              padding: EdgeInsets.all(AppInsets.s16),
-              itemCount: newReports.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final report = newReports[index];
-                return _ReportCard(
-                  report: report,
-                  onTap: () => context.push('/engineer-task/${report['id']}'),
-                );
-              },
-            );
-          },
+    // Gunakan widget biasa (bukan AppPage) agar tidak membuat nested Scaffold
+    // EngineerShellScreen sudah menyediakan Scaffold + AppBar
+    return RefreshIndicator(
+      onRefresh: () async => ref.invalidate(engineerReportsProvider),
+      child: reportsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => _ErrorView(
+          message: err is AppFailure ? err.message : err.toString(),
+          onRetry: () => ref.invalidate(engineerReportsProvider),
         ),
+        data: (reports) {
+          // Tampilkan semua laporan NEW atau OPEN yang bisa diklaim engineer
+          final newReports = reports.where((r) =>
+              r['status'] == 'NEW' || r['status'] == 'OPEN'
+          ).toList();
+          if (newReports.isEmpty) {
+            return _EmptyView(message: 'Tidak ada laporan kerusakan baru.\nSemua beres!');
+          }
+          return ListView.separated(
+            padding: EdgeInsets.all(AppInsets.s16),
+            itemCount: newReports.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final report = newReports[index];
+              return _ReportCard(
+                report: report,
+                onTap: () => context.push('/engineer-task/${report['id']}'),
+              );
+            },
+          );
+        },
       ),
     );
   }
