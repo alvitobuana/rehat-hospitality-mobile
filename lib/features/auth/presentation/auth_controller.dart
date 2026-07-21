@@ -6,9 +6,11 @@ import '../../../core/device/device_service.dart';
 import '../../../core/exceptions/app_failure.dart';
 import '../../../core/location/location_service.dart';
 import '../../../core/storage/session_manager.dart';
+import '../../../core/storage/secure_storage_helper.dart';
 import '../../../services/firebase_messaging_service.dart';
 import '../data/auth_repository.dart';
 import '../data/device_repository.dart';
+import '../../hotel/presentation/providers/hotel_configuration_provider.dart';
 
 enum AuthStatus {
   uninitialized,
@@ -23,11 +25,13 @@ enum AuthStatus {
 class AuthState {
   final AuthStatus status;
   final String? username;
+  final String? role;
   final String? errorMessage;
 
   const AuthState({
     required this.status,
     this.username,
+    this.role,
     this.errorMessage,
   });
 
@@ -36,11 +40,13 @@ class AuthState {
   AuthState copyWith({
     AuthStatus? status,
     String? username,
+    String? role,
     String? errorMessage,
   }) {
     return AuthState(
       status: status ?? this.status,
       username: username ?? this.username,
+      role: role ?? this.role,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
@@ -53,10 +59,11 @@ final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
   final sessionManager = ref.read(sessionManagerProvider);
   final fcmService = ref.read(firebaseMessagingServiceProvider);
   final deviceRepository = ref.read(deviceRepositoryProvider);
-  return AuthController(authRepo, deviceService, locationService, sessionManager, fcmService, deviceRepository);
+  return AuthController(ref, authRepo, deviceService, locationService, sessionManager, fcmService, deviceRepository);
 });
 
 class AuthController extends StateNotifier<AuthState> {
+  final Ref _ref;
   final AuthRepository _authRepository;
   final DeviceService _deviceService;
   final LocationService _locationService;
@@ -66,6 +73,7 @@ class AuthController extends StateNotifier<AuthState> {
   final Logger _logger = Logger();
 
   AuthController(
+    this._ref,
     this._authRepository,
     this._deviceService,
     this._locationService,
@@ -96,7 +104,9 @@ class AuthController extends StateNotifier<AuthState> {
 
       final sessionData = await _authRepository.checkSession();
       final username = sessionData['username'] as String?;
-      final userId = sessionData['user_id'] as int?;
+      final userId = sessionData['user_id'] is int 
+          ? sessionData['user_id'] as int
+          : int.tryParse(sessionData['user_id']?.toString() ?? '');
       final role = sessionData['role'] as String? ?? 'staff';
       final level = sessionData['level'] as String? ?? 'Non Admin';
       final hotelId = sessionData['property_id'] as String? ?? '';
@@ -107,6 +117,7 @@ class AuthController extends StateNotifier<AuthState> {
       final email = sessionData['email'] as String? ?? '';
       final phone = sessionData['phone'] as String? ?? '';
       final status = sessionData['user_status'] as String? ?? 'ACTIVE';
+      final assignedHotels = sessionData['assigned_hotels'] as List<dynamic>?;
       
       if (username != null && userId != null) {
         await _sessionManager.saveSession(
@@ -123,12 +134,27 @@ class AuthController extends StateNotifier<AuthState> {
           email: email,
           phone: phone,
           status: status,
+          assignedHotels: assignedHotels,
         );
-        await _validateAccessChain(username);
 
-        // Sync FCM token if authentication is successful
+        // Dynamically fetch hotel configuration
+        if (hotelId.isNotEmpty) {
+          try {
+            await _ref.read(hotelConfigurationProvider.notifier).fetchConfiguration(hotelId);
+          } catch (e) {
+            _logger.e('Failed to load hotel configuration on auto-login: $e');
+          }
+        }
+
+        await _validateAccessChain(username, role: role);
+
+        // Sync FCM token + subscribe hotel topic jika authenticated
         if (state.status == AuthStatus.authenticated) {
           await syncFcmToken(isActive: 1);
+          // Subscribe ke hotel topic maintenance untuk menerima broadcast laporan baru
+          if (hotelId.isNotEmpty) {
+            await _fcmService.subscribeToHotelTopic(hotelId);
+          }
         }
       } else {
         throw Exception('Data sesi server tidak lengkap.');
@@ -145,7 +171,9 @@ class AuthController extends StateNotifier<AuthState> {
     try {
       final response = await _authRepository.login(username, password);
       final loggedInUser = response['username'] as String? ?? username;
-      final userId = response['user_id'] as int?;
+      final userId = response['user_id'] is int 
+          ? response['user_id'] as int
+          : int.tryParse(response['user_id']?.toString() ?? '');
       final role = response['role'] as String? ?? 'staff';
       final level = response['level'] as String? ?? 'Non Admin';
       final hotelId = response['property_id'] as String? ?? '';
@@ -156,6 +184,7 @@ class AuthController extends StateNotifier<AuthState> {
       final email = response['email'] as String? ?? '';
       final phone = response['phone'] as String? ?? '';
       final status = response['user_status'] as String? ?? 'ACTIVE';
+      final assignedHotels = response['assigned_hotels'] as List<dynamic>?;
 
       // Ambil phpSessionId dari response Map (yang diekstrak sinkron di repositori)
       // untuk menghindari race condition penulisan async secure storage
@@ -177,12 +206,26 @@ class AuthController extends StateNotifier<AuthState> {
           email: email,
           phone: phone,
           status: status,
+          assignedHotels: assignedHotels,
         );
-        await _validateAccessChain(loggedInUser);
 
-        // Sync FCM token if authentication is successful
+        // Dynamically fetch hotel configuration
+        if (hotelId.isNotEmpty) {
+          try {
+            await _ref.read(hotelConfigurationProvider.notifier).fetchConfiguration(hotelId);
+          } catch (e) {
+            _logger.e('Failed to load hotel configuration on login: $e');
+          }
+        }
+
+        await _validateAccessChain(loggedInUser, role: role);
+
+        // Sync FCM token + subscribe hotel topic jika authenticated
         if (state.status == AuthStatus.authenticated) {
           await syncFcmToken(isActive: 1);
+          if (hotelId.isNotEmpty) {
+            await _fcmService.subscribeToHotelTopic(hotelId);
+          }
         }
       } else {
         throw AppFailure.local('Gagal mendapatkan ID Karyawan dari server.', 'LOGIN_FAILED');
@@ -208,15 +251,21 @@ class AuthController extends StateNotifier<AuthState> {
     try {
       final device = await _deviceService.getDeviceInfo();
       final userId = await _sessionManager.getUserId();
+      final rawUserId = await SecureStorageHelper.read('user_id');
+      final rawPhpSessId = await SecureStorageHelper.read('php_sess_id');
+      final rawUsername = await SecureStorageHelper.read('username');
       if (userId == null) {
-        throw AppFailure.local('Data sesi lokal tidak valid.', 'SESSION_INVALID');
+        throw AppFailure.local(
+          'Data sesi lokal tidak valid. ID: $userId, RawID: $rawUserId, SessId: ${rawPhpSessId != null ? "ada" : "null"}, User: $rawUsername', 
+          'SESSION_INVALID'
+        );
       }
 
       final success = await _deviceService.bindDevice(userId.toString(), device);
       
       if (success) {
         // Cek langkah berikutnya (GPS Permission)
-        await _validateAccessChain(state.username);
+        await _validateAccessChain(state.username, role: state.role);
 
         // Sync FCM token if authentication is successful
         if (state.status == AuthStatus.authenticated) {
@@ -249,6 +298,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = AuthState(
           status: AuthStatus.locationPermissionRequired,
           username: state.username,
+          role: state.role,
           errorMessage: 'GPS_SERVICE_DISABLED',
         );
         return;
@@ -262,6 +312,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = AuthState(
           status: AuthStatus.locationPermissionRequired,
           username: state.username,
+          role: state.role,
           errorMessage: 'PERMISSION_PERMANENTLY_DENIED',
         );
         return;
@@ -272,6 +323,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = AuthState(
           status: AuthStatus.authenticated,
           username: state.username,
+          role: state.role,
         );
         await syncFcmToken(isActive: 1);
         return;
@@ -283,6 +335,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = AuthState(
           status: AuthStatus.authenticated,
           username: state.username,
+          role: state.role,
         );
         await syncFcmToken(isActive: 1);
       } else {
@@ -294,6 +347,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = AuthState(
           status: AuthStatus.locationPermissionRequired,
           username: state.username,
+          role: state.role,
           errorMessage: errCode,
         );
       }
@@ -315,10 +369,16 @@ class AuthController extends StateNotifier<AuthState> {
   /// Logout / Keluar
   Future<void> logout() async {
     state = const AuthState(status: AuthStatus.authenticating);
+    // Unsubscribe dari hotel topic sebelum logout
+    final hotelId = await _sessionManager.getHotelId();
+    if (hotelId != null && hotelId.isNotEmpty) {
+      await _fcmService.unsubscribeFromHotelTopic(hotelId);
+    }
     // Nonaktifkan FCM Token di backend sebelum local session dihapus
     await syncFcmToken(isActive: 0);
     await _authRepository.logout();
     await _sessionManager.clearSession();
+    _ref.read(hotelConfigurationProvider.notifier).clear();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
@@ -331,11 +391,14 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   /// Rantai validasi: Check Session ➔ Device Binding check ➔ GPS permission check
-  Future<void> _validateAccessChain(String? username) async {
+  Future<void> _validateAccessChain(String? username, {String? role}) async {
     if (username == null) {
       state = const AuthState(status: AuthStatus.unauthenticated);
       return;
     }
+
+    // Fallback: baca role dari session jika tidak di-pass (mis. dari checkAutoLogin)
+    final effectiveRole = role ?? await _sessionManager.getRole() ?? 'staff';
 
     try {
       // 1. Validasi Device Binding
@@ -344,6 +407,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = AuthState(
           status: AuthStatus.deviceBindingRequired,
           username: username,
+          role: effectiveRole,
         );
         return;
       }
@@ -357,6 +421,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = AuthState(
           status: AuthStatus.authenticated,
           username: username,
+          role: effectiveRole,
         );
         return;
       }
@@ -372,12 +437,14 @@ class AuthController extends StateNotifier<AuthState> {
       state = AuthState(
         status: AuthStatus.locationPermissionRequired,
         username: username,
+        role: effectiveRole,
         errorMessage: errorCode,
       );
     } catch (e) {
       state = AuthState(
         status: AuthStatus.error,
         username: username,
+        role: effectiveRole,
         errorMessage: 'Validasi keamanan gagal: $e',
       );
     }
@@ -389,7 +456,7 @@ class AuthController extends StateNotifier<AuthState> {
     required String email,
     required String phone,
     required String password,
-    required String hotelId,
+    required List<String> hotelIds,
     required String department,
     required String position,
     String? employeeId,
@@ -405,7 +472,7 @@ class AuthController extends StateNotifier<AuthState> {
         email: email,
         phone: phone,
         password: password,
-        hotelId: hotelId,
+        hotelIds: hotelIds,
         department: department,
         position: position,
         employeeId: employeeId,

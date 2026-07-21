@@ -194,12 +194,14 @@ class ProfileView extends ConsumerWidget {
                     value: '${session.role?.toUpperCase() ?? 'STAFF'} / ${session.level ?? 'Housekeeping'}',
                   ),
                   Divider(height: 20, color: AppColors.divider(context)),
-                  _buildDetailRow(
-                    context,
-                    icon: Icons.hotel_rounded,
-                    label: 'Hotel Penugasan',
-                    value: session.hotelName?.isNotEmpty == true ? session.hotelName! : 'Rehat Hospitality',
-                  ),
+                  session.assignedHotels != null && session.assignedHotels!.isNotEmpty
+                      ? _buildMultiHotelSection(context, session.assignedHotels!)
+                      : _buildDetailRow(
+                          context,
+                          icon: Icons.hotel_rounded,
+                          label: 'Hotel Penugasan',
+                          value: session.hotelName?.isNotEmpty == true ? session.hotelName! : 'Rehat Hospitality',
+                        ),
                 ],
               ),
             ),
@@ -328,6 +330,52 @@ class ProfileView extends ConsumerWidget {
                   fontSize: 14,
                 ),
               ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMultiHotelSection(BuildContext context, List<dynamic> assignedHotels) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.hotel_rounded, size: 20, color: Colors.grey.shade600),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hotel Penugasan (${assignedHotels.length})',
+                style: AppTypography.caption(context).copyWith(
+                  color: Colors.grey.shade600,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...assignedHotels.map((h) {
+                final name = (h is Map && h.containsKey('name')) ? h['name'] as String : h.toString();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('🏨 ', style: AppTypography.body(context).copyWith(fontSize: 14)),
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: AppTypography.body(context).copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ],
           ),
         ),

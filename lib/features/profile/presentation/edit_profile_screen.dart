@@ -344,11 +344,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   icon: Icons.badge_outlined,
                 ),
                 const SizedBox(height: AppInsets.s8),
-                _readOnlyField(
-                  label: 'Hotel Penugasan',
-                  value: session.hotelName?.isNotEmpty == true ? session.hotelName! : '—',
-                  icon: Icons.hotel_rounded,
-                ),
+                session.assignedHotels != null && session.assignedHotels!.isNotEmpty
+                    ? _readOnlyMultiHotelField(
+                        label: 'Hotel Penugasan',
+                        assignedHotels: session.assignedHotels!,
+                        icon: Icons.hotel_rounded,
+                      )
+                    : _readOnlyField(
+                        label: 'Hotel Penugasan',
+                        value: session.hotelName?.isNotEmpty == true ? session.hotelName! : '—',
+                        icon: Icons.hotel_rounded,
+                      ),
                 const SizedBox(height: AppInsets.s8),
                 _readOnlyField(
                   label: 'Departemen',
@@ -425,6 +431,56 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ])),
         const Icon(Icons.lock_outline, size: 14, color: Colors.grey),
       ]),
+    );
+  }
+
+  Widget _readOnlyMultiHotelField({
+    required String label,
+    required List<dynamic> assignedHotels,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withAlpha(60)),
+        color: Colors.grey.withAlpha(15),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.grey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$label (${assignedHotels.length})', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                const SizedBox(height: 6),
+                ...assignedHotels.map((h) {
+                  final name = (h is Map && h.containsKey('name')) ? h['name'] as String : h.toString();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('🏨 ', style: TextStyle(fontSize: 14)),
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const Icon(Icons.lock_outline, size: 14, color: Colors.grey),
+        ],
+      ),
     );
   }
 

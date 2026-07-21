@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'secure_storage_helper.dart';
 
@@ -20,6 +21,7 @@ class SessionManager {
   static const String _keyEmail = 'email';
   static const String _keyPhone = 'phone';
   static const String _keyStatus = 'status';
+  static const String _keyAssignedHotels = 'assigned_hotels';
 
   Future<void> saveSession({
     required String phpSessionId,
@@ -35,7 +37,9 @@ class SessionManager {
     required String email,
     required String phone,
     required String status,
+    List<dynamic>? assignedHotels,
   }) async {
+    print('saveSession: userId=$userId');
     await SecureStorageHelper.write(_keyPhpSessionId, phpSessionId);
     await SecureStorageHelper.write(_keyUserId, userId.toString());
     await SecureStorageHelper.write(_keyUsername, username);
@@ -49,6 +53,11 @@ class SessionManager {
     await SecureStorageHelper.write(_keyEmail, email);
     await SecureStorageHelper.write(_keyPhone, phone);
     await SecureStorageHelper.write(_keyStatus, status);
+    if (assignedHotels != null) {
+      await SecureStorageHelper.write(_keyAssignedHotels, jsonEncode(assignedHotels));
+    } else {
+      await SecureStorageHelper.delete(_keyAssignedHotels);
+    }
   }
 
   Future<void> savePhpSessionId(String value) async {
@@ -61,6 +70,7 @@ class SessionManager {
 
   Future<int?> getUserId() async {
     final val = await SecureStorageHelper.read(_keyUserId);
+    print('getUserId: val=$val');
     if (val != null) {
       return int.tryParse(val);
     }
@@ -119,6 +129,10 @@ class SessionManager {
     return await SecureStorageHelper.read(_keyStatus);
   }
 
+  Future<String?> getAssignedHotels() async {
+    return await SecureStorageHelper.read(_keyAssignedHotels);
+  }
+
   /// Memperbarui hanya field foto profil di secure storage tanpa mengubah session lainnya.
   Future<void> saveProfilePhoto(String profilePhoto) async {
     await SecureStorageHelper.write(_keyProfilePhoto, profilePhoto);
@@ -149,6 +163,7 @@ class SessionManager {
     await SecureStorageHelper.delete(_keyEmail);
     await SecureStorageHelper.delete(_keyPhone);
     await SecureStorageHelper.delete(_keyStatus);
+    await SecureStorageHelper.delete(_keyAssignedHotels);
   }
   
   Future<void> clearAll() async {
@@ -170,6 +185,7 @@ class SessionData {
   final String? email;
   final String? phone;
   final String? status;
+  final List<dynamic>? assignedHotels;
 
   SessionData({
     this.userId,
@@ -185,6 +201,7 @@ class SessionData {
     this.email,
     this.phone,
     this.status,
+    this.assignedHotels,
   });
 }
 
@@ -203,6 +220,15 @@ final sessionDataProvider = FutureProvider<SessionData>((ref) async {
   final email = await sessionManager.getEmail();
   final phone = await sessionManager.getPhone();
   final status = await sessionManager.getStatus();
+  
+  final assignedHotelsStr = await sessionManager.getAssignedHotels();
+  List<dynamic>? assignedHotels;
+  if (assignedHotelsStr != null && assignedHotelsStr.isNotEmpty) {
+    try {
+      assignedHotels = jsonDecode(assignedHotelsStr) as List<dynamic>;
+    } catch (_) {}
+  }
+
   return SessionData(
     userId: userId,
     username: username,
@@ -217,5 +243,6 @@ final sessionDataProvider = FutureProvider<SessionData>((ref) async {
     email: email,
     phone: phone,
     status: status,
+    assignedHotels: assignedHotels,
   );
 });
