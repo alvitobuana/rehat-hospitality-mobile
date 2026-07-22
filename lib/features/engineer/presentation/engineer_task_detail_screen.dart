@@ -6,7 +6,6 @@ import '../../../core/design_system/app_insets.dart';
 import '../../../core/exceptions/app_failure.dart';
 import '../../../core/utils/env_config.dart';
 import '../data/engineer_repository.dart';
-import 'widgets/sla_countdown_widget.dart';
 
 
 // ── Provider: fetch detail satu laporan ───────────────────────────────────────
@@ -175,15 +174,6 @@ class _EngineerTaskDetailScreenState extends ConsumerState<EngineerTaskDetailScr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── SLA Countdown ──
-            SlaCountdownWidget(
-              status: status,
-              claimDeadline: report['claim_deadline'] as String?,
-              completionDeadline: report['completion_deadline'] as String?,
-              createdAt: report['created_at'] as String?,
-            ),
-            const SizedBox(height: 16),
-
             // ── Header ──────────────────────────────────────────────────────
             _SectionHeader('Informasi Laporan'),
             Card(

@@ -4,10 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/design_system/app_insets.dart';
 import '../../../core/exceptions/app_failure.dart';
 import '../data/engineer_repository.dart';
-import 'widgets/sla_countdown_widget.dart';
 import 'engineer_dashboard_view.dart' show StatusBadge, PriorityBadge;
-
-
 
 /// Tab "Tugas Saya" — menampilkan laporan yang sudah diklaim oleh Engineer ini.
 /// Difilter dari list response: laporan berstatus CLAIMED / IN_PROGRESS / COMPLETED.
@@ -18,8 +15,6 @@ class EngineerMyTasksView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reportsAsync = ref.watch(engineerReportsProvider);
 
-    // Gunakan widget biasa (bukan AppPage) agar tidak membuat nested Scaffold
-    // EngineerShellScreen sudah menyediakan Scaffold + AppBar
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(engineerReportsProvider),
       child: reportsAsync.when(
@@ -41,8 +36,9 @@ class EngineerMyTasksView extends ConsumerWidget {
         ),
         data: (reports) {
           final myTasks = reports.where((r) {
+            final isMine = r['is_mine'] == true || r['is_mine'] == 1;
             final s = (r['status'] as String?) ?? '';
-            return s == 'CLAIMED' || s == 'IN_PROGRESS' || s == 'COMPLETED';
+            return isMine || s == 'CLAIMED' || s == 'IN_PROGRESS' || s == 'COMPLETED';
           }).toList();
 
           if (myTasks.isEmpty) {
@@ -75,7 +71,6 @@ class EngineerMyTasksView extends ConsumerWidget {
           );
         },
       ),
-
     );
   }
 }
@@ -147,19 +142,7 @@ class _MyTaskCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      PriorityBadge(priority: priority),
-                      const SizedBox(width: 8),
-                      SlaCountdownWidget(
-                        status: status,
-                        claimDeadline: report['claim_deadline'] as String?,
-                        completionDeadline: report['completion_deadline'] as String?,
-                        createdAt: report['created_at'] as String?,
-                        compact: true,
-                      ),
-                    ],
-                  ),
+                  PriorityBadge(priority: priority),
                   Text(
                     'Diperbarui: ${_formatDate(updatedAt)}',
                     style: theme.textTheme.labelSmall?.copyWith(
